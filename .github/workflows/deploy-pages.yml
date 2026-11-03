@@ -1,0 +1,89 @@
+name: Publish Winter World Playtest
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - WinterWorld_Playtest.zip
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check playtest archive
+        shell: bash
+        run: |
+          if [[ ! -s "WinterWorld_Playtest.zip" ]]; then
+            echo "::error::WinterWorld_Playtest.zip is missing. Upload the playtest ZIP to the repository root."
+            exit 1
+          fi
+
+      - name: Extract and validate game
+        shell: bash
+        run: |
+          mkdir -p package _site
+          unzip -q WinterWorld_Playtest.zip -d package
+
+          GAME_DIR="package/WinterWorld_Prototype"
+          for file in index.html style.css src/main.js src/sakura_mesh_data.js; do
+            if [[ ! -s "$GAME_DIR/$file" ]]; then
+              echo "::error::Expected game file is missing: $GAME_DIR/$file"
+              exit 1
+            fi
+          done
+
+          cp -a "$GAME_DIR/." _site/
+          touch _site/.nojekyll
+
+          # Version the static URLs with this commit SHA so browsers fetch each new build.
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          index = Path("_site/index.html")
+          html = index.read_text(encoding="utf-8")
+          version = os.environ["GITHUB_SHA"][:12]
+          replacements = {
+              'href="style.css"': f'href="style.css?v={version}"',
+              'src="src/sakura_mesh_data.js"': f'src="src/sakura_mesh_data.js?v={version}"',
+              'src="src/main.js"': f'src="src/main.js?v={version}"',
+          }
+          for old, new in replacements.items():
+              if old not in html:
+                  raise SystemExit(f"Expected cacheable asset reference not found: {old}")
+              html = html.replace(old, new)
+          index.write_text(html, encoding="utf-8")
+          PY
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy site
+        id: deployment
+        uses: actions/deploy-pages@v4
