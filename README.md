@@ -1,27 +1,33 @@
 # Winter World
 
-A browser-playable Windows/WebGL2 development playtest. The hosted site serves the latest approved playtest from the `main` branch.
+A public, browser-playable WebGL2 exploration prototype. The repository now includes an automatic GitHub Pages deployment workflow.
 
-The site is public because this repository uses GitHub Pages on the GitHub Free plan. Do not commit private data, credentials, or personal information.
+**Current playtest package:** Build 014  
+**Hosted URL after the first successful deployment:** https://danielvr124.github.io/WinterWorld/
 
-Current playable version: **Build 014** (M2 forest benchmark, awaiting further visual asset work).
+## One-time setup
 
-## Play
+1. Open [Repository Pages settings](https://github.com/DanielVr124/WinterWorld/settings/pages).
+2. Under **Build and deployment → Source**, select **GitHub Actions**.
+3. Download the [Winter World playtest archive](https://github.com/DanielVr124/WinterWorld) from this conversation and upload it to the repository root using **Add file → Upload files**. The exact filename must be `WinterWorld_Playtest.zip`.
+4. Commit the upload to `main`. The **Publish Winter World Playtest** workflow will extract the archive, validate the required game files, and deploy the site.
 
-After GitHub Pages is enabled and the first deployment succeeds, visit:
+The workflow is at `.github/workflows/deploy-pages.yml`. You can also start it manually from the repository's **Actions** tab after Pages has been enabled.
 
-https://danielvr124.github.io/WinterWorld/
+## Publishing future playtests
 
-## Updating playtests
+For each approved build, create a ZIP with this same filename:
 
-To publish a new playtest, update the website files in the root of `main` and push the changes. `.github/workflows/deploy-pages.yml` publishes the repository automatically. Update the cache-busting version query strings in `index.html` and `src/sakura_loader.js` whenever the game files change.
+`WinterWorld_Playtest.zip`
+
+Keep the game files inside a `WinterWorld_Prototype/` folder, including `index.html`, `style.css`, `src/main.js`, and `src/sakura_mesh_data.js`. Upload the updated archive to the same repository path and commit it to `main`. The workflow will replace the hosted game at the **same URL** and add a commit-based cache-busting query to the asset URLs so browsers fetch the updated build.
+
+If GitHub does not offer an overwrite for the existing ZIP, delete the old `WinterWorld_Playtest.zip` from the repository first, then upload the replacement with the exact same filename.
 
 ## Local play
 
-Serve the repository root over HTTP (for example, `python -m http.server 8000`) and open `http://localhost:8000/`. The compressed sakura mesh loader uses `fetch` and browser `DecompressionStream`, so opening `index.html` directly as `file://` is not supported.
+Extract the archive and serve the `WinterWorld_Prototype` folder over HTTP (for example, `python -m http.server 8000`). Open `http://localhost:8000/`. Do not open `index.html` directly as a `file://` URL.
 
-## Technical notes
+## Public access
 
-- Static HTML, CSS, and WebGL2; no backend is required.
-- The large sakura geometry payload is stored as gzip-compressed binary with float16 vertex attributes and uint32 indices, then decoded in the browser.
-- Playtest results are collected in the project conversation, not by a separate website testing form.
+This repository and its GitHub Pages website are public. Game files deployed to Pages are therefore publicly downloadable. Do not put credentials, private information, or unapproved experimental builds in the published archive.
