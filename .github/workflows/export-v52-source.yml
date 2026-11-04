@@ -1,0 +1,33 @@
+name: Export V52 source for editing
+
+on:
+  push:
+    branches:
+      - render-v52-cycles
+    paths:
+      - .github/workflows/export-v52-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source branch
+        uses: actions/checkout@v4
+      - name: Verify and extract source ZIP
+        run: |
+          set -euo pipefail
+          unzip -t render-v52-source.zip
+          unzip -q render-v52-source.zip
+          test -s render-v52-source/v52/build_hero_spruce_v52.py
+          test -s render-v52-source/v52/render_cycles_v52.py
+      - name: Upload editable V52 source
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-V52-Editable-Source
+          path: render-v52-source/
+          if-no-files-found: error
+          retention-days: 14
