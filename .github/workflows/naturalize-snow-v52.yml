@@ -44,118 +44,110 @@ jobs:
           from pathlib import Path
 
           path = Path("render-v52-source/v52/build_hero_spruce_v52.py")
-          source = path.read_text(encoding="utf-8")
+          s = path.read_text(encoding="utf-8")
 
-          replacements = [
-          ("""        cross=np.linspace(-1.0,1.0,13,dtype=float)""",
-           """        cross=np.linspace(-1.0,1.0,21,dtype=float)"""),
-          ("""        station_noise=rng.uniform(-.060,.060,segments+1)""",
-           """        station_noise=rng.uniform(-.105,.105,segments+1)"""),
-          ("""            edge_wave=(.90+.070*np.sin(u*math.tau*2.4+phase)
-                       +.050*np.sin(u*math.tau*6.2-phase*.6)+station_noise[i])""",
-           """            edge_wave=(.92+.085*np.sin(u*math.tau*1.7+phase)
-                       +.060*np.sin(u*math.tau*4.3-phase*.6)+station_noise[i])"""),
-          ("""                    if local.random() < .98:
-                          twig_caps=((.10,.42),(.50,.88))
-                          for cap_i,(cap_a,cap_b) in enumerate(twig_caps):
-                              if local.random() < (.92 if cap_i==0 else .78):
-                                  snow.add_snow_ribbon([root,mid,tip],
-                                      half_width=local.uniform(.042,.050)*(1-.20*t),
-                                      thickness=local.uniform(.022,.027)*(1-.12*t),
-                                      lift=.039*(1-.12*t),
-                                      seed=branch_seed+4200+j*29+side_sign*7+cap_i,
-                                      segments=11,start=cap_a,end=cap_b)""",
-           """                    # One connected snow mantle follows each secondary twig.
-                      # Fewer, longer deposits avoid the repeated "placed cap" look.
-                      if local.random() < .82:
-                          snow.add_snow_ribbon([root,mid,tip],
-                              half_width=local.uniform(.038,.047)*(1-.20*t),
-                              thickness=local.uniform(.018,.024)*(1-.12*t),
-                              lift=.035*(1-.12*t),
-                              seed=branch_seed+4200+j*29+side_sign*7,
-                              segments=20,start=.045,end=.975)"""),
-          ("""                            if local.random() < .66:
-                                  snow.add_snow_ribbon([fork_root,fm,ft],
-                                      half_width=.019*(1-.20*t), thickness=.0115,
-                                      lift=.020, seed=branch_seed+5100+j*31,
-                                      segments=9, start=.22, end=.90)""",
-           """                            if local.random() < .34:
-                                  snow.add_snow_ribbon([fork_root,fm,ft],
-                                      half_width=.015*(1-.20*t), thickness=.0085,
-                                      lift=.016, seed=branch_seed+5100+j*31,
-                                      segments=12, start=.14, end=.96)"""),
-          ("""                    if di in (0,1,2) and local.random() < .985:
-                          fan_caps=((.12,.43),(.52,.88))
-                          for cap_i,(cap_a,cap_b) in enumerate(fan_caps):
-                              if local.random() < (.88 if cap_i==0 else .72):
-                                  snow.add_snow_ribbon([root,smid,stip],
-                                      half_width=local.uniform(.050,.058)*(1-.20*t),
-                                      thickness=local.uniform(.022,.027),
-                                      lift=.034, seed=branch_seed+5300+si*13+di*3+cap_i,
-                                      segments=11,start=cap_a,end=cap_b)""",
-           """                    if di in (0,1,2) and local.random() < .76:
-                          # A single, feather-edged mantle runs along the whole fan.
-                          snow.add_snow_ribbon([root,smid,stip],
-                              half_width=local.uniform(.041,.052)*(1-.20*t),
-                              thickness=local.uniform(.018,.024),
-                              lift=.030, seed=branch_seed+5300+si*13+di*3,
-                              segments=20,start=.055,end=.965)"""),
-          ("""            # Individually settled snow strips follow the primary bough's changing
-                      # direction. Small gaps and tapered ends keep the result natural rather
-                      # than a row of separate, rounded copy-pasted blobs.
-                      snow_chance=.99 if detail=='hero' else .97
-                      if local.random()<snow_chance:
-                          # Six separate caps carry more total snow, but each one remains
-                          # a compact, individually tapered deposit that follows the bough.
-                          intervals=[(.025,.135),(.150,.260),(.275,.385),(.400,.510),(.525,.635),(.650,.760),(.775,.885),(.900,.985)]
-                          for q,(a,b) in enumerate(intervals):
-                              jitter=local.uniform(-.018,.018)
-                              a=max(.025,a+jitter); b=min(.99,b+jitter*.70)
-                              snow.add_snow_ribbon([p0,p1,p2,p3],
-                                  half_width=local.uniform(.068,.082)*(1-t*.28),
-                                  thickness=local.uniform(.038,.047)*(1-t*.14),
-                                  lift=local.uniform(.064,.078)*(1-t*.12),
-                                  seed=branch_seed+800+q,segments=17,start=a,end=b)""",
-           """            # One long, naturally irregular mantle follows the primary bough.
-                      # It tapers only near the branch base and tip; it is not split into
-                      # repeated short caps, so the snow reads as a connected drift.
-                      snow_chance=.96 if detail=='hero' else .90
-                      if local.random()<snow_chance:
-                          snow.add_snow_ribbon([p0,p1,p2,p3],
-                              half_width=local.uniform(.062,.076)*(1-t*.28),
-                              thickness=local.uniform(.034,.043)*(1-t*.14),
-                              lift=local.uniform(.056,.070)*(1-t*.12),
-                              seed=branch_seed+800,segments=34,start=.015,end=.99)"""),
-          ("""                if side in (-1,1) and di in (0,2) and rng.random()<.70:
-                      snow.add_snow_ribbon([fork_root,fm,ft],.018,.011,.020,
-                          seed+2700+j*19+di*11,segments=6,start=.20,end=.88)""",
-           """                if side in (-1,1) and di in (0,2) and rng.random()<.34:
-                      snow.add_snow_ribbon([fork_root,fm,ft],.014,.0085,.016,
-                          seed+2700+j*19+di*11,segments=10,start=.14,end=.96)"""),
-          ("""    # Several individually tapered snow mantles track the curvature of the
-              # main bough; short gaps expose needles and prevent overhanging clumps.
-              for j,(a,b) in enumerate(((.025,.135),(.150,.260),(.275,.385),(.400,.510),(.525,.635),(.650,.760),(.775,.885),(.900,.985))):
-                  snow.add_snow_ribbon(pts,.068,.042,.068,seed+800+j,
-                                       segments=17,start=a,end=b)""",
-           """    # A single connected snow mantle follows the full main bough.
-              # The irregular feathered margins leave needles visible at the sides.
-              snow.add_snow_ribbon(pts,.066,.039,.064,seed+800,
-                                   segments=36,start=.015,end=.99)"""),
-          ("""    stats['notes']="V52: preserves V47's approved silhouette and detailed individual-needle geometry, keeps individually tapered snow mantles in contact with the upper needle canopy, using shorter, rounded deposits and increased total coverage using short, independently tapered caps on primary boughs, upper-facing branchlet fans, secondary twigs and tertiary forklets; keeps the rounded sculpted snow surfaces, subtle lower-bough sag/hue variation, and a Blender PBR material pass with fine snow/bark/needle roughness. No detached snow blobs are emitted." """.rstrip(),
-           """    stats['notes']="V52 natural-snow pass: preserves the approved V47 branch silhouette and individual-needle detail, but replaces repeated short snow caps with longer, connected, feather-edged mantles following primary boughs and secondary fans. Smaller tertiary deposits are less frequent and thinner, with broader low-frequency edge drift and a smoother rounded cross-section. Subtle lower-bough sag, needle hue variation, and the Blender PBR material pass are retained. No detached snow blobs are emitted." """.rstrip())
-          ]
+          def replace_once(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f"Missing exact marker: {label}")
+              s = s.replace(old, new, 1)
 
-          for index, (old, new) in enumerate(replacements, 1):
-              if old not in source:
-                  raise SystemExit(f"Patch {index} did not match the expected source; stopping without changing the file.")
-              source = source.replace(old, new, 1)
+          def replace_between(start, end, new, label):
+              global s
+              i = s.index(start)
+              j = s.index(end, i)
+              s = s[:i] + new + s[j:]
 
-          if "intervals=[(.025,.135)" in source or "twig_caps=((.10,.42)" in source or "fan_caps=((.12,.43)" in source:
+          replace_once("        cross=np.linspace(-1.0,1.0,13,dtype=float)",
+                       "        cross=np.linspace(-1.0,1.0,21,dtype=float)", "cross resolution")
+          replace_once("        station_noise=rng.uniform(-.060,.060,segments+1)",
+                       "        station_noise=rng.uniform(-.105,.105,segments+1)", "edge noise")
+          replace_once("            edge_wave=(.90+.070*np.sin(u*math.tau*2.4+phase)\n                       +.050*np.sin(u*math.tau*6.2-phase*.6)+station_noise[i])",
+                       "            edge_wave=(.92+.085*np.sin(u*math.tau*1.7+phase)\n                       +.060*np.sin(u*math.tau*4.3-phase*.6)+station_noise[i])",
+                       "low-frequency edge drift")
+
+          replace_between(
+              "                    if local.random() < .98:",
+              "                    secondary_positions=",
+              "                    # One connected snow mantle follows each secondary twig.\n"
+              "                    # Fewer, longer deposits avoid the repeated placed-cap look.\n"
+              "                    if local.random() < .82:\n"
+              "                        snow.add_snow_ribbon([root,mid,tip],\n"
+              "                            half_width=local.uniform(.038,.047)*(1-.20*t),\n"
+              "                            thickness=local.uniform(.018,.024)*(1-.12*t),\n"
+              "                            lift=.035*(1-.12*t),\n"
+              "                            seed=branch_seed+4200+j*29+side_sign*7,\n"
+              "                            segments=20,start=.045,end=.975)\n",
+              "secondary twig mantle")
+
+          replace_between(
+              "                            if local.random() < .66:",
+              "                            needles.add_spray(fm,fd",
+              "                            if local.random() < .34:\n"
+              "                                snow.add_snow_ribbon([fork_root,fm,ft],\n"
+              "                                    half_width=.015*(1-.20*t), thickness=.0085,\n"
+              "                                    lift=.016, seed=branch_seed+5100+j*31,\n"
+              "                                    segments=12, start=.14, end=.96)\n",
+              "tertiary twig snow")
+
+          replace_between(
+              "                    if di in (0,1,2) and local.random() < .985:",
+              "                    shoot_axis=unit(stip-root)",
+              "                    if di in (0,1,2) and local.random() < .76:\n"
+              "                        # A single, feather-edged mantle runs along the whole fan.\n"
+              "                        snow.add_snow_ribbon([root,smid,stip],\n"
+              "                            half_width=local.uniform(.041,.052)*(1-.20*t),\n"
+              "                            thickness=local.uniform(.018,.024),\n"
+              "                            lift=.030, seed=branch_seed+5300+si*13+di*3,\n"
+              "                            segments=20,start=.055,end=.965)\n",
+              "branchlet fan mantle")
+
+          replace_between(
+              "            # Individually settled snow strips follow the primary bough's changing",
+              "    # A broken, slender crown leader",
+              "            # One long, naturally irregular mantle follows the primary bough.\n"
+              "            # It tapers only near the branch base and tip; it is not split into\n"
+              "            # repeated short caps, so the snow reads as a connected drift.\n"
+              "            snow_chance=.96 if detail=='hero' else .90\n"
+              "            if local.random()<snow_chance:\n"
+              "                snow.add_snow_ribbon([p0,p1,p2,p3],\n"
+              "                    half_width=local.uniform(.062,.076)*(1-t*.28),\n"
+              "                    thickness=local.uniform(.034,.043)*(1-t*.14),\n"
+              "                    lift=local.uniform(.056,.070)*(1-t*.12),\n"
+              "                    seed=branch_seed+800,segments=34,start=.015,end=.99)\n\n",
+              "primary bough mantle")
+
+          replace_between(
+              "                if side in (-1,1) and di in (0,2) and rng.random()<.70:",
+              "                for f,frac in enumerate((.28,.72)):",
+              "                if side in (-1,1) and di in (0,2) and rng.random()<.34:\n"
+              "                    snow.add_snow_ribbon([fork_root,fm,ft],.014,.0085,.016,\n"
+              "                        seed+2700+j*19+di*11,segments=10,start=.14,end=.96)\n",
+              "bough forklet snow")
+
+          replace_between(
+              "    # Several individually tapered snow mantles track the curvature of the",
+              "    parts={'wood':wood.to_mesh(),'snow':snow.to_mesh()}",
+              "    # A single connected snow mantle follows the full main bough.\n"
+              "    # The irregular feathered margins leave needles visible at the sides.\n"
+              "    snow.add_snow_ribbon(pts,.066,.039,.064,seed+800,\n"
+              "                         segments=36,start=.015,end=.99)\n",
+              "close-up bough mantle")
+
+          note_start = "    stats['notes']=" 
+          note_end = "\n"
+          i = s.index(note_start)
+          j = s.index(note_end, i)
+          s = s[:i] + "    stats['notes']="+repr(
+              "V52 natural-snow pass: preserves the approved V47 branch silhouette and individual-needle detail, but replaces repeated short snow caps with longer, connected, feather-edged mantles following primary boughs and secondary fans. Smaller tertiary deposits are less frequent and thinner, with broader low-frequency edge drift and a smoother rounded cross-section. Subtle lower-bough sag, needle hue variation, and the Blender PBR material pass are retained. No detached snow blobs are emitted."
+          ) + s[j:]
+
+          if "intervals=[(.025,.135)" in s or "twig_caps=((.10,.42)" in s or "fan_caps=((.12,.43)" in s:
               raise SystemExit("Old segmented snow-cap logic remains; refusing to build.")
 
-          compile(source, str(path), "exec")
-          path.write_text(source, encoding="utf-8")
-          print(f"Applied {len(replacements)} snow naturalization patches.")
+          compile(s, str(path), "exec")
+          path.write_text(s, encoding="utf-8")
+          print("Natural snow patch applied; source syntax check passed.")
           PY
 
       - name: Rebuild V47 and V52 geometry
