@@ -1,4 +1,4 @@
-name: Build Winter World 015 with final V52 hero spruce
+name: Build Winter World 016 with upright V52 conifer forest
 
 on:
   push:
@@ -6,13 +6,17 @@ on:
       - render-v52-cycles
     paths:
       - .github/workflows/build-v52-game.yml
+      - scripts/build_v52_game_lod.py
+      - scripts/integrate_v52_game.py
+      - scripts/build_v52_game_lod.py
+      - scripts/integrate_v52_game.py
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: winterworld-build015-v52
+  group: winterworld-build016-v52
   cancel-in-progress: false
 
 jobs:
@@ -60,10 +64,11 @@ jobs:
           tar -xJf "${RUNNER_TEMP}/blender-5.2.3-linux-x64.tar.xz" -C "${RUNNER_TEMP}"
           "${RUNNER_TEMP}/blender-5.2.3-linux-x64/blender" --version
 
-      - name: Convert V52 to a WebGL2 game LOD
+      - name: Convert V52 to upright hero and forest WebGL2 LODs
         env:
           V52_INPUT_GLB: ${{ github.workspace }}/v52-artifact/render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
-          V52_OUTPUT_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_data.js
+          V52_OUTPUT_HERO_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_data.js
+          V52_OUTPUT_FOREST_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
           V52_OUTPUT_STATS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
         run: |
           set -euo pipefail
@@ -85,41 +90,59 @@ jobs:
           node --check src/main.js
           node --check src/sakura_mesh_data.js
           node --check src/hero_spruce_v52_data.js
+          node --check src/forest_spruce_v52_data.js
           node - <<'JS'
           const fs = require('fs');
           const vm = require('vm');
-          const context = { window: {} };
-          vm.runInNewContext(fs.readFileSync('src/hero_spruce_v52_data.js', 'utf8'), context);
-          const d = context.window.WinterWorldHeroSpruceV52Data;
-          if (!d || !d.vertexCount || !d.triangleCount) throw new Error('V52 mesh metadata missing');
-          const vertices = Buffer.from(d.vertices, 'base64');
-          const indices = Buffer.from(d.indices, 'base64');
-          if (vertices.length !== d.vertexCount * 9 * 4) throw new Error('V52 vertex buffer length mismatch');
-          if (indices.length !== d.triangleCount * 3 * 4) throw new Error('V52 index buffer length mismatch');
-          const floats = new Float32Array(vertices.buffer, vertices.byteOffset, vertices.length / 4);
-          for (let i = 0; i < floats.length; i++) if (!Number.isFinite(floats[i])) throw new Error('Non-finite V52 vertex attribute');
-          const ix = new Uint32Array(indices.buffer, indices.byteOffset, indices.length / 4);
-          let max = 0;
-          for (const value of ix) if (value > max) max = value;
-          if (max >= d.vertexCount) throw new Error('V52 index exceeds vertex buffer');
-          if (d.triangleCount < 180000 || d.triangleCount > 900000) throw new Error('V52 LOD triangle budget exceeded');
+
+          function validateMesh(file, globalName, minTriangles, maxTriangles) {
+            const context = { window: {} };
+            vm.runInNewContext(fs.readFileSync(file, 'utf8'), context);
+            const d = context.window[globalName];
+            if (!d || !d.vertexCount || !d.triangleCount) throw new Error(globalName + ' metadata missing');
+            const vertices = Buffer.from(d.vertices, 'base64');
+            const indices = Buffer.from(d.indices, 'base64');
+            if (vertices.length !== d.vertexCount * 9 * 4) throw new Error(globalName + ' vertex buffer length mismatch');
+            if (indices.length !== d.triangleCount * 3 * 4) throw new Error(globalName + ' index buffer length mismatch');
+            const floats = new Float32Array(vertices.buffer, vertices.byteOffset, vertices.length / 4);
+            for (let i = 0; i < floats.length; i++) if (!Number.isFinite(floats[i])) throw new Error(globalName + ' contains a non-finite vertex attribute');
+            const ix = new Uint32Array(indices.buffer, indices.byteOffset, indices.length / 4);
+            let max = 0;
+            for (const value of ix) if (value > max) max = value;
+            if (max >= d.vertexCount) throw new Error(globalName + ' index exceeds vertex buffer');
+            if (d.triangleCount < minTriangles || d.triangleCount > maxTriangles) throw new Error(globalName + ' triangle budget exceeded');
+            return {vertices:d.vertexCount,triangles:d.triangleCount,maxIndex:max,vertexBytes:vertices.length,indexBytes:indices.length};
+          }
+
+          const hero = validateMesh('src/hero_spruce_v52_data.js', 'WinterWorldHeroSpruceV52Data', 180000, 900000);
+          const forest = validateMesh('src/forest_spruce_v52_data.js', 'WinterWorldForestSpruceV52Data', 3000, 25000);
+          const stats = JSON.parse(fs.readFileSync('src/hero_spruce_v52_stats.json', 'utf8'));
+          for (const lod of [stats.hero_lod, stats.forest_lod]) {
+            if (!lod || lod.coordinate_conversion.position_and_normal_mapping !== '(x, y, z) -> (x, z, -y)') throw new Error('V52 axis conversion metadata missing');
+            if (!(lod.bounds_m.height > Math.max(lod.bounds_m.width, lod.bounds_m.depth))) throw new Error('V52 mesh failed upright bounds check');
+          }
           const html = fs.readFileSync('index.html', 'utf8');
-          if (!html.includes('src/hero_spruce_v52_data.js')) throw new Error('V52 data script not loaded by index.html');
-          console.log(JSON.stringify({vertices:d.vertexCount,triangles:d.triangleCount,maxIndex:max,vertexBytes:vertices.length,indexBytes:indices.length}));
+          for (const file of ['src/hero_spruce_v52_data.js','src/forest_spruce_v52_data.js']) {
+            if (!html.includes(file)) throw new Error(file + ' not loaded by index.html');
+          }
+          const main = fs.readFileSync('src/main.js', 'utf8');
+          if (main.includes('mesh:firSpecies[') || main.includes('add(pineCone')) throw new Error('Legacy conifer placement remains');
+          if (!main.includes('mesh:forestSpruceV52Mesh')) throw new Error('V52 forest mesh not used for conifer placement');
+          console.log(JSON.stringify({hero,forest,coordinateConversion:stats.coordinate_conversion},null,2));
           JS
           cd ../..
-          cd work && zip -qr -9 ../WinterWorld_Playtest_Build015_V52.zip WinterWorld_Prototype && cd ..
-          unzip -tq WinterWorld_Playtest_Build015_V52.zip
-          ls -lh WinterWorld_Playtest_Build015_V52.zip work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
+          cd work && zip -qr -9 ../WinterWorld_Playtest_Build016_V52_ConiferForest.zip WinterWorld_Prototype && cd ..
+          unzip -tq WinterWorld_Playtest_Build016_V52_ConiferForest.zip
+          ls -lh WinterWorld_Playtest_Build016_V52_ConiferForest.zip work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
 
-      - name: Upload Build 015 and integration stats
+      - name: Upload Build 016 and full-forest integration stats
         uses: actions/upload-artifact@v4
         with:
-          name: WinterWorld-Build015-V52-HeroSpruce
+          name: WinterWorld-Build016-V52-ConiferForest
           path: |
-            WinterWorld_Playtest_Build015_V52.zip
+            WinterWorld_Playtest_Build016_V52_ConiferForest.zip
             work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
-            work/WinterWorld_Prototype/BUILD_015_CHANGELOG.md
+            work/WinterWorld_Prototype/BUILD_016_CHANGELOG.md
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_Bough_SnowContact_Closeup.png
           if-no-files-found: error
