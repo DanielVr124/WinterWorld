@@ -237,8 +237,8 @@ html = html.replace(
 )
 html = replace_once(
     html,
+    '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/main.js"></script>',
     '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/hero_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_low_data.js"></script>\n  <script src="src/main.js"></script>',
-    '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/hero_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_data.js"></script>\n  <script src="src/main.js"></script>',
     "V52 script include",
 )
 html_path.write_text(html, encoding="utf-8", newline="\n")
