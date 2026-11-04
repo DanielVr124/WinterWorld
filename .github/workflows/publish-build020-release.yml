@@ -1,0 +1,75 @@
+name: Publish Winter World Development Build 020 Release
+
+on:
+  workflow_run:
+    workflows:
+      - Build Winter World 020 with performance-optimized V52 LODs
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the successful Build 020 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build020-V52-PerformanceLOD
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Prepare release assets and verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          find_one() {
+            local name="$1"
+            local found
+            found="$(find artifacts -type f -name "$name" -print -quit)"
+            if [[ -z "$found" || ! -s "$found" ]]; then
+              echo "::error::Required Build 020 release asset is missing: $name"
+              exit 1
+            fi
+            cp "$found" "release-assets/$name"
+          }
+
+          find_one "WinterWorld_Playtest_Build020_V52_PerformanceLOD.zip"
+          find_one "hero_spruce_v52_stats.json"
+          find_one "BUILD_020_CHANGELOG.md"
+          find_one "BUILD_020_TEST_REPORT.md"
+          find_one "BUILD_020_TEST_REPORT.json"
+          find_one "V52_Build020_Hero_Medium_Far_LODs.png"
+          find_one "V52_Cycles_FullTree_ZUp_Framed_40mm.png"
+          find_one "V52_Cycles_Bough_SnowContact_Closeup.png"
+
+          unzip -tq release-assets/WinterWorld_Playtest_Build020_V52_PerformanceLOD.zip
+          ls -lh release-assets/
+
+      - name: Publish the numbered GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TARGET: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="winter-world-build-020-v52-performance-lod"
+          TITLE="Winter World Development Build 020 — V52 Performance LODs"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --title "$TITLE" \
+              --notes-file release-assets/BUILD_020_CHANGELOG.md \
+              --target "$TARGET"
+          fi
