@@ -147,10 +147,11 @@ jobs:
           source = source[:start] + new_setup + source[end:]
 
           old_camera = "                          tuple(tree_center), 46.0)"
-          new_camera = "                          tuple(tree_center), 40.0)"
-          if old_camera not in source:
-              raise SystemExit("Expected Z-up camera lens line was not found; refusing to guess.")
-          source = source.replace(old_camera, new_camera, 1)
+          correct_camera = "                          tuple(tree_center), 40.0)"
+          if old_camera in source:
+              source = source.replace(old_camera, correct_camera, 1)
+          elif correct_camera not in source:
+              raise SystemExit("Neither the expected 46 mm nor corrected 40 mm Z-up camera line was found.")
 
           old_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_ZUp_Framed.png', 48, 1600, 1900)
           bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_ZUpFramed.blend'))
@@ -158,9 +159,10 @@ jobs:
           new_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_ZUp_Framed_40mm.png', 48, 1600, 1900)
           bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_ZUpFramed_40mm.blend'))
           print('Z_UP_FULL_TREE_RENDER_40MM_COMPLETE', flush=True)"""
-          if old_render not in source:
-              raise SystemExit("Expected Z-up render block was not found; refusing to guess.")
-          source = source.replace(old_render, new_render, 1)
+          if old_render in source:
+              source = source.replace(old_render, new_render, 1)
+          elif new_render not in source:
+              raise SystemExit("Neither the old nor corrected Z-up render block was found.")
 
           # The source script is already a single-view renderer.
           compile(source, str(path), "exec")
