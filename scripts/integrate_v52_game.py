@@ -169,6 +169,7 @@ distance_batcher = """  let sceneBatches = [];
     }
     gl.bindBuffer(gl.ARRAY_BUFFER,null);lastBatchedCameraX=camera.x;lastBatchedCameraZ=camera.z;
   }
+"""
 main = main[:batch_start] + distance_batcher + main[batch_end:]
 main = replace_once(main,
     "  const camera={x:0,y:terrainHeight(0,18)+WALK_EYE_HEIGHT,z:18,yaw:Math.PI,pitch:0};",
