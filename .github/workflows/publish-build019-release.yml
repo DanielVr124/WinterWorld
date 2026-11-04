@@ -6,6 +6,11 @@ on:
       - Build Winter World 019 with distance-based V52 LODs
     types:
       - completed
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-build019-release.yml
 
 permissions:
   contents: write
@@ -13,7 +18,7 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download the successful Build 019 artifact
@@ -22,7 +27,7 @@ jobs:
           name: WinterWorld-Build019-V52-DistanceLOD
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id || '41836432101' }}
           path: artifacts
 
       - name: Prepare release assets and verify package
@@ -58,7 +63,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TARGET: ${{ github.event.workflow_run.head_sha }}
+          TARGET: ${{ github.event.workflow_run.head_sha || 'dec0472e760bb2e7822a1cc9075b2a76f080a58c' }}
         shell: bash
         run: |
           set -euo pipefail
