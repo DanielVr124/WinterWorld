@@ -140,6 +140,86 @@ jobs:
           elif "contact_lift=min(lift,support_radius*.88)" not in s:
               raise SystemExit("Could not find snow-ribbon base-height calculation.")
 
+          # Turn every ribbon into a closed cap: its hidden underside is embedded in
+          # the branch, so camera angle and taper cannot expose a floating seam.
+          fn_start = s.index("    def add_snow_ribbon(")
+          fn_end = s.index("\n    def add_snow_clump(", fn_start)
+          fn = s[fn_start:fn_end]
+          if "bottom_verts.append(bottom_p)" not in fn:
+              old_top_lists = "        verts=[]; cols=[]"
+              new_top_lists = "        verts=[]; cols=[]; bottom_verts=[]; bottom_cols=[]"
+              if old_top_lists not in fn:
+                  raise SystemExit("Could not add underside vertex buffers to add_snow_ribbon.")
+              fn = fn.replace(old_top_lists, new_top_lists, 1)
+
+              old_color_append = "                cols.append(np.clip(color,0,1))"
+              bottom_code = "\n".join([
+                  old_color_append,
+                  "                # Hidden lower skin sits inside the supporting wood.",
+                  "                bed_radius=support_radius if support_radius is not None else max(lift,thickness)",
+                  "                bottom_half=min(width*.72,bed_radius*.72)",
+                  "                bottom_y=center[1]+bed_radius*.35",
+                  "                bottom_p=center+up*(bottom_y-center[1])+side*(x*bottom_half)",
+                  "                bottom_verts.append(bottom_p)",
+                  "                bottom_cols.append(np.clip(base_color*.90,0,1))",
+              ])
+              if old_color_append not in fn:
+                  raise SystemExit("Could not add the embedded snow underside vertices.")
+              fn = fn.replace(old_color_append, bottom_code, 1)
+
+          if "cols_per_row=len(cross)" not in fn:
+              face_start = fn.index("        base=len(self.v)\n")
+              new_faces = "\n".join([
+                  "        cols_per_row=len(cross)",
+                  "        top_base=len(self.v)",
+                  "        for p,c in zip(verts,cols): self.add_vertex(p,c)",
+                  "        bottom_base=len(self.v)",
+                  "        for p,c in zip(bottom_verts,bottom_cols): self.add_vertex(p,c)",
+                  "        for i in range(segments):",
+                  "            for j in range(cols_per_row-1):",
+                  "                a=top_base+i*cols_per_row+j",
+                  "                b=top_base+(i+1)*cols_per_row+j",
+                  "                c=a+1; d=b+1",
+                  "                self.f.extend([(a,b,c),(c,b,d)])",
+                  "                ba=bottom_base+i*cols_per_row+j",
+                  "                bb=bottom_base+(i+1)*cols_per_row+j",
+                  "                bc=ba+1; bd=bb+1",
+                  "                # Reverse winding: underside normal faces into the branch.",
+                  "                self.f.extend([(ba,bc,bb),(bc,bd,bb)])",
+                  "            # Close both feathered side edges of the mantle.",
+                  "            ta=top_base+i*cols_per_row",
+                  "            tb=top_base+(i+1)*cols_per_row",
+                  "            ba=bottom_base+i*cols_per_row",
+                  "            bb=bottom_base+(i+1)*cols_per_row",
+                  "            self.f.extend([(ta,ba,tb),(tb,ba,bb)])",
+                  "            j=cols_per_row-1",
+                  "            ta=top_base+i*cols_per_row+j",
+                  "            tb=top_base+(i+1)*cols_per_row+j",
+                  "            ba=bottom_base+i*cols_per_row+j",
+                  "            bb=bottom_base+(i+1)*cols_per_row+j",
+                  "            self.f.extend([(ta,tb,ba),(tb,bb,ba)])",
+                  "        # Close both ends; the snow mantle tapers to a fine feathered tip.",
+                  "        for j in range(cols_per_row-1):",
+                  "            ta=top_base+j; tc=top_base+j+1",
+                  "            ba=bottom_base+j; bc=bottom_base+j+1",
+                  "            self.f.extend([(ta,tc,ba),(tc,bc,ba)])",
+                  "            ta=top_base+segments*cols_per_row+j",
+                  "            tc=ta+1",
+                  "            ba=bottom_base+segments*cols_per_row+j",
+                  "            bc=ba+1",
+                  "            self.f.extend([(ta,ba,tc),(tc,ba,bc)])",
+              ])
+              fn = fn[:face_start] + new_faces
+
+          fn = fn.replace(
+              "The deposit is a continuous surface strip, not a detached blob.",
+              "The deposit is a closed snow mantle with a concealed underside embedded in the supporting wood."
+          )
+          s = s[:fn_start] + fn + s[fn_end:]
+          if "bottom_verts.append(bottom_p)" not in s or "cols_per_row=len(cross)" not in s:
+              raise SystemExit("Closed snow-cap geometry was not fully inserted.")
+          compile(s, str(path), "exec")
+
           call_updates = [
               ("segments=20,start=.045,end=.975)", "segments=20,start=.045,end=.975,support_radii=[r0,r0*.49,.0035])", "main secondary twigs"),
               ("segments=12, start=.14, end=.96)", "segments=12, start=.14, end=.96,support_radii=[.010,.005,.0018])", "main tertiary forklets"),
@@ -159,7 +239,7 @@ jobs:
           if "base_y=center[1]+lift+waviness" in s:
               raise SystemExit("Old fixed-height snow placement remains.")
 
-          note = ("V52 snow-contact polish: every primary, secondary, tertiary and standalone-bough snow mantle follows the local supporting wood radius and overlaps it slightly at the lower edge. The overlap is clamped against local branch thickness and tip micro-relief so tapered branches cannot reveal floating seams. The approved crown silhouette, snow coverage, needle distribution and procedural random sequence are preserved.")
+          note = ("V52 snow-contact polish: every primary, secondary, tertiary and standalone-bough snow mantle is a closed cap whose concealed underside embeds into the local supporting wood radius. The contact skin follows each tapered branch and is protected against tip micro-relief, eliminating open-sheet gaps from different viewing angles. The approved crown silhouette, snow coverage, needle distribution and procedural random sequence are preserved.")
           lines = s.splitlines()
           note_lines = [i for i, line in enumerate(lines) if "stats['notes']=" in line]
           if len(note_lines) != 1:
