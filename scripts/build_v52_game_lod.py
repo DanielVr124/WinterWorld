@@ -31,23 +31,23 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.20,
+    "Spruce_Primary_Secondary_Boughs": 0.10,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 70.0,
-    "Spruce_Individual_Needles": 70.0,
+    "Spruce_Settled_Snow_Patches": 5.0,
+    "Spruce_Individual_Needles": 5.0,
 }
 FOREST_LOW_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.15,
+    "Spruce_Primary_Secondary_Boughs": 0.045,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_LOW_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 28.0,
-    "Spruce_Individual_Needles": 28.0,
+    "Spruce_Settled_Snow_Patches": 1.5,
+    "Spruce_Individual_Needles": 1.5,
 }
 
 
@@ -323,15 +323,15 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=550_000,
-    max_triangles=640_000,
+    min_triangles=45_000,
+    max_triangles=65_000,
 )
 forest_low_stats = write_mesh_lod(
     "ForestLow",
     FOREST_LOW_COMPONENT_RATIOS,
     output_forest_low_js,
-    min_triangles=210_000,
-    max_triangles=280_000,
+    min_triangles=15_000,
+    max_triangles=25_000,
 )
 
 combined_stats = {
@@ -342,7 +342,7 @@ combined_stats = {
     "forest_low_lod": forest_low_stats,
     "placement": {
         "hero": {"x": 10.0, "z": -4.0, "scale": 1.0},
-        "forest": "Distance-selected V52 LODs: full hero inside 26m, fuller medium LOD from 26m to 78m, low LOD beyond 78m or for small trees.",
+        "forest": "Distance-selected V52 LODs: one dedicated showcase tree uses the full hero mesh; other mature trees use the medium mesh to 68m and the compact far mesh beyond 68m; small trees use the compact far mesh.",
     },
     "integration": (
         "Every conifer uses the same final V52 spruce source. Trees near the player use "
@@ -465,8 +465,8 @@ def render_lod_comparison_preview(hero_js, forest_js, forest_low_js, output_png)
     scene.render.filepath = output_png
     bpy.ops.render.render(write_still=True)
     if not os.path.isfile(output_png) or os.path.getsize(output_png) < 50_000:
-        raise RuntimeError("The Build 019 V52 distance-LOD comparison preview was not rendered.")
-    print(f"Rendered actual V52 near/medium/far LOD comparison: {output_png}")
+        raise RuntimeError("The Build 020 performance LOD comparison preview was not rendered.")
+    print(f"Rendered actual V52 hero/medium/far performance LOD comparison: {output_png}")
 
 
 render_lod_comparison_preview(
