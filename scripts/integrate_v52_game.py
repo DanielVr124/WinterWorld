@@ -33,6 +33,15 @@ loader = """  const heroSpruceV52Data=window.WinterWorldHeroSpruceV52Data;
   const forestSpruceV52TriangleCount=forestSpruceV52Data.triangleCount;
   forestSpruceV52Data.vertices='';forestSpruceV52Data.indices='';
   window.WinterWorldForestSpruceV52Data=null;
+  const forestLowSpruceV52Data=window.WinterWorldForestLowSpruceV52Data;
+  if(!forestLowSpruceV52Data) throw new Error('V52 far-forest spruce LOD data did not load.');
+  const forestLowSpruceV52Mesh=makeColorMesh(
+    decodeTypedBase64(forestLowSpruceV52Data.vertices,Float32Array),
+    decodeTypedBase64(forestLowSpruceV52Data.indices,Uint32Array)
+  );
+  const forestLowSpruceV52TriangleCount=forestLowSpruceV52Data.triangleCount;
+  forestLowSpruceV52Data.vertices='';forestLowSpruceV52Data.indices='';
+  window.WinterWorldForestLowSpruceV52Data=null;
 """
 main = replace_once(main, marker, loader + marker, "hero mesh initialization")
 
@@ -40,12 +49,16 @@ marker = "  const rng=(n)=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-
 addition = """
   const heroSpruceV52Position=[10,-4];
   function nearHeroSpruceV52(x,z){return Math.hypot(x-heroSpruceV52Position[0],z-heroSpruceV52Position[1])<5.4;}
-  function addV52Conifer(x,z,sc,seed,addCollider=false){
+  function addV52Conifer(x,z,sc,seed,addCollider=false,forceFar=false){
     const y=terrainHeight(x,z),spin=rng(seed+52000)*Math.PI*2;
     const tint=.93+rng(seed+53000)*.10;
     if(addCollider)addCircleCollider(x,z,.31*sc,'V52 spruce trunk');
     objects.push({
       mesh:forestSpruceV52Mesh,
+      lodMeshes:{hero:heroSpruceV52Mesh,medium:forestSpruceV52Mesh,far:forestLowSpruceV52Mesh},
+      lodPos:[x,z],
+      lodScale:sc,
+      lodForceFar:forceFar,
       model:modelMatrix([x,y,z],[0,spin,0],[sc,sc,sc]),
       color:[tint,tint*.99,tint*1.015],
       emissive:0
@@ -99,16 +112,73 @@ old_ridge = """  for(let i=0;i<12;i++){const x=(i-5.5)*18,z=-67-rng(i+75)*20,h=1
 new_ridge = """  // Distant ridgeline conifers use the same V52-derived forest LOD too.
   for(let i=0;i<12;i++){
     const x=(i-5.5)*18,z=-67-rng(i+75)*20,h=10+rng(i+43)*16;
-    addV52Conifer(x,z,h/8.42,i+8000,false);
+    addV52Conifer(x,z,h/8.42,i+8000,false,true);
   }
   for(let i=0;i<28;i++){
     const x=-92+rng(i+3100)*184,z=-72-rng(i+3200)*17,h=6+rng(i+3300)*9;
-    addV52Conifer(x,z,h/8.42,i+9000,false);
+    addV52Conifer(x,z,h/8.42,i+9000,false,true);
   }
 """
 main = replace_once(main, old_ridge, new_ridge, "distant conifer silhouettes")
 
 
+
+# Replace static batches with distance-aware shared V52 LOD batches.
+batch_start = main.find("  const batches = new Map();")
+batch_end = main.find("  // A tiny observability system:", batch_start)
+if batch_start < 0 or batch_end < 0:
+    raise RuntimeError("Could not locate static scene batching block")
+distance_batcher = """  let sceneBatches = [];
+  let sceneInstanceCount=0,sceneTriangleCount=0;
+  let sceneLodCounts={hero:0,medium:0,far:0};
+  const meshInstanceBuffers=new Map();
+  let lastBatchedCameraX=NaN,lastBatchedCameraZ=NaN;
+  function rebuildSceneBatches(force=false){
+    if(!force&&Number.isFinite(lastBatchedCameraX)&&Math.hypot(camera.x-lastBatchedCameraX,camera.z-lastBatchedCameraZ)<.65)return;
+    const batches=new Map();
+    sceneInstanceCount=0;sceneTriangleCount=0;sceneLodCounts={hero:0,medium:0,far:0};
+    for(const instance of objects){
+      let mesh=instance.mesh;
+      if(instance.lodMeshes){
+        const distance=Math.hypot(camera.x-instance.lodPos[0],camera.z-instance.lodPos[1]);
+        if(instance.lodForceFar||instance.lodScale<.55||distance>=78){mesh=instance.lodMeshes.far;sceneLodCounts.far++;}
+        else if(distance<26){mesh=instance.lodMeshes.hero;sceneLodCounts.hero++;}
+        else{mesh=instance.lodMeshes.medium;sceneLodCounts.medium++;}
+      }else if(mesh===heroSpruceV52Mesh){sceneLodCounts.hero++;}
+      let batch=batches.get(mesh);
+      if(!batch){batch={mesh,instances:[]};batches.set(mesh,batch);}
+      batch.instances.push(instance);
+    }
+    sceneBatches=[];
+    for(const batch of batches.values()){
+      const data=new Float32Array(batch.instances.length*20);let cursor=0;
+      for(const instance of batch.instances){data.set(instance.model,cursor);cursor+=16;data.set(instance.color,cursor);cursor+=3;data[cursor++]=instance.emissive;}
+      let instanceBuffer=meshInstanceBuffers.get(batch.mesh);
+      if(!instanceBuffer){
+        instanceBuffer=gl.createBuffer();meshInstanceBuffers.set(batch.mesh,instanceBuffer);
+        gl.bindVertexArray(batch.mesh.vao);gl.bindBuffer(gl.ARRAY_BUFFER,instanceBuffer);
+        const stride=20*4;
+        for(let col=0;col<4;col++){const loc=3+col;gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,4,gl.FLOAT,false,stride,col*16);gl.vertexAttribDivisor(loc,1);}
+        gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,3,gl.FLOAT,false,stride,64);gl.vertexAttribDivisor(7,1);
+        gl.enableVertexAttribArray(8);gl.vertexAttribPointer(8,1,gl.FLOAT,false,stride,76);gl.vertexAttribDivisor(8,1);
+        gl.bindVertexArray(null);
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER,instanceBuffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);
+      sceneBatches.push({mesh:batch.mesh,count:batch.instances.length});
+      sceneInstanceCount+=batch.instances.length;sceneTriangleCount+=(batch.mesh.count/3)*batch.instances.length;
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER,null);lastBatchedCameraX=camera.x;lastBatchedCameraZ=camera.z;
+  }
+main = main[:batch_start] + distance_batcher + main[batch_end:]
+main = replace_once(main,
+    "  const camera={x:0,y:terrainHeight(0,18)+WALK_EYE_HEIGHT,z:18,yaw:Math.PI,pitch:0};",
+    "  const camera={x:0,y:terrainHeight(0,18)+WALK_EYE_HEIGHT,z:18,yaw:Math.PI,pitch:0};\n  rebuildSceneBatches(true);",
+    "initial distance LOD batch")
+main = replace_once(main,"last=now;update(dt);frameCount++;","last=now;update(dt);rebuildSceneBatches();frameCount++;","per-frame distance LOD refresh")
+main = replace_once(main,
+    "V52 forest spruce LOD: ${forestSpruceV52TriangleCount.toLocaleString()} tris/instance\nSakura body:",
+    "V52 forest medium LOD: ${forestSpruceV52TriangleCount.toLocaleString()} tris/instance\nV52 forest far LOD: ${forestLowSpruceV52TriangleCount.toLocaleString()} tris/instance\nV52 LOD counts: near ${sceneLodCounts.hero}, mid ${sceneLodCounts.medium}, far ${sceneLodCounts.far}\nSakura body:",
+    "distance LOD diagnostics")
 
 marker = "  // First Japanese cherry-blossom grove: broad natural crowns, dark branching,"
 hero_object = """  // One full-detail V52 hero spruce anchors the near path. The other conifers
@@ -167,7 +237,7 @@ html = html.replace(
 )
 html = replace_once(
     html,
-    '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/main.js"></script>',
+    '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/hero_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_low_data.js"></script>\n  <script src="src/main.js"></script>',
     '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/hero_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_data.js"></script>\n  <script src="src/main.js"></script>',
     "V52 script include",
 )

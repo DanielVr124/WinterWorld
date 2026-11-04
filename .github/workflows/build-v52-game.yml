@@ -1,4 +1,4 @@
-name: Build Winter World 018 with fuller V52 conifer detail
+name: Build Winter World 019 with distance-based V52 LODs
 
 on:
   push:
@@ -67,8 +67,9 @@ jobs:
           V52_INPUT_GLB: ${{ github.workspace }}/v52-artifact/render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
           V52_OUTPUT_HERO_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_data.js
           V52_OUTPUT_FOREST_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
+          V52_OUTPUT_FOREST_LOW_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/forest_spruce_v52_low_data.js
           V52_OUTPUT_STATS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
-          V52_OUTPUT_PREVIEW: ${{ github.workspace }}/V52_Build018_Hero_vs_ForestLOD.png
+          V52_OUTPUT_PREVIEW: ${{ github.workspace }}/V52_Build019_Hero_Medium_Far_LODs.png
         run: |
           set -euo pipefail
           "${RUNNER_TEMP}/blender-5.2.3-linux-x64/blender" \
@@ -81,104 +82,92 @@ jobs:
           set -euo pipefail
           python scripts/integrate_v52_game.py work/WinterWorld_Prototype
 
-      - name: Write Build 018 documentation and test context
+      - name: Write Build 019 documentation and test context
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-
           game = Path("work/WinterWorld_Prototype")
           index = game / "index.html"
           html = index.read_text(encoding="utf-8")
-          html = html.replace("Development Build 016", "Development Build 018")
-          html = html.replace("DEVELOPMENT BUILD 016 · M2", "DEVELOPMENT BUILD 017 · M2")
-          html = html.replace(
-              "Final V52 spruce across the entire conifer forest · Build 016",
-              "Intact snow and needle islands in every repeated V52 forest tree · Build 018"
-          )
-          html = html.replace(
-              "M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD",
-              "M2 VISUAL BENCHMARK · SHAPE-PRESERVING V52 FOREST LOD · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD"
-          )
+          html = html.replace("Development Build 016", "Development Build 019")
+          html = html.replace("DEVELOPMENT BUILD 016 · M2", "DEVELOPMENT BUILD 019 · M2")
+          html = html.replace("Final V52 spruce across the entire conifer forest · Build 016", "Distance-based full, medium, and far V52 spruce LODs · Build 019")
+          html = html.replace("M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD", "M2 VISUAL BENCHMARK · DISTANCE-BASED V52 TREE DETAIL · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD")
           index.write_text(html, encoding="utf-8")
+          changelog = """# Build 019 — Distance-Based V52 Conifer LODs
 
-          changelog = """# Build 018 — Fuller V52 Forest Detail Repair
+          ## Root cause fixed
+          - Build 018 heavily reduced snow/needle meshes first and then sampled only 18% of the remaining islands, compounding the loss and leaving repeated trees visibly bare.
+          - Medium and far LODs now retain 70% and 28% respectively of the complete connected snow and needle islands after source-component optimization.
 
-          ## Fixed
-          - Removed random per-face deletion that had fragmented snow patches and individual needles in repeated forest trees.
-          - The forest LOD now retains an 18% selection of complete connected snow and needle islands from the already optimized source surfaces (up from 5% in Build 017).
-          - Increased repeated-tree bough detail to a 20% decimation ratio while keeping a measured per-instance geometry budget.
-          - Preserved the V52 Blender Z-up to WebGL Y-up conversion and ground-root normalization.
+          ## Runtime detail levels
+          - Mature trees within 26m use the full-detail V52 hero mesh.
+          - Trees from 26m to 78m use the fuller medium V52 mesh (roughly 590k triangles).
+          - Trees beyond 78m use the far V52 mesh (roughly 240k triangles).
+          - Small understory and distant ridgeline trees use the far LOD.
+          - All three LODs use the same V52 source. Batches refresh only after 0.65m player movement and reuse one instance buffer per mesh LOD.
 
-          ## Implemented
-          - The near-path showcase tree keeps the high-detail V52 hero mesh.
-          - Every other conifer—including understory and distant ridgeline placements—uses the repaired V52 forest LOD from the same source asset.
-          - Per-instance scale, rotation, and subtle tint variation remain.
-          - Sakura grove, terrain, path, cabin, rocks, lanterns, controls, collisions, fog, snowfall, settings, and world layout remain unchanged.
+          ## Preserved
+          - Hero tree orientation and root position.
+          - Sakura grove, terrain, path, cabin, rocks, lanterns, controls, collisions, fog, snowfall, settings, and layout.
 
-          ## Validation and reports
-          - Automated checks cover coordinate conversion, orientation, root placement, mesh buffers, finite attributes, index bounds, scene integration, and ZIP integrity.
-          - The build publishes a human-readable test report and machine-readable QA JSON.
-          - A Blender render compares the actual exported hero and forest LOD meshes.
-          - In-browser visual review and target-PC FPS remain pending user testing.
+          ## Reports
+          - Includes QA JSON, a human-readable test report, and a Blender render of the actual near/medium/far exported buffers.
+          - CI checks geometry, indices, orientation, root, island budgets, scene wiring, JavaScript syntax, and ZIP integrity.
+          - Live browser visuals and target-PC FPS still require user review.
           """
-          (game / "BUILD_018_CHANGELOG.md").write_text(changelog, encoding="utf-8")
-          (game / "BUILD_016_CHANGELOG.md").unlink(missing_ok=True)
+          (game / "BUILD_019_CHANGELOG.md").write_text(changelog, encoding="utf-8")
+          for old in ("BUILD_016_CHANGELOG.md", "BUILD_018_CHANGELOG.md"):
+              (game / old).unlink(missing_ok=True)
+          readme = """# Winter World — Development Build 019
 
-          readme = """# Winter World — Development Build 018
+          Browser-playable WebGL2 winter-world prototype.
 
-          A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 018 makes the repeated V52 forest trees much fuller: it retains substantially more complete snow patches and needle islands instead of randomly cutting their faces. The near-path showcase remains the high-detail V52 hero tree.
+          ## V52 spruce detail
+          All conifers use the final V52 source with distance-based LOD:
+          - Full hero mesh within 26m.
+          - Fuller medium mesh from 26m to 78m.
+          - Far mesh beyond 78m and on small understory/distant ridgeline trees.
 
-          ## Run the world
+          ## Run locally
           1. Extract the ZIP.
-          2. Open the WinterWorld_Prototype folder.
-          3. Open index.html in a current Chrome or Edge browser.
-          4. Click Enter the World.
-
-          If local-file rendering is blocked, run py -m http.server 8000 in this folder and open http://127.0.0.1:8000/.
+          2. Open WinterWorld_Prototype.
+          3. Open index.html in Chrome or Edge.
+          4. If local-file loading is blocked, run py -m http.server 8000 in this folder and open http://127.0.0.1:8000/.
 
           ## Controls
           - W, A, S, D or arrow keys: move
           - Mouse: look around
           - Shift: move faster
           - Esc: release the mouse / close settings
-          - Click the scene: capture the mouse
+          - Click scene: capture mouse
           - E: development note
-          - F3: performance and player diagnostics
-
-          ## Build 018 — V52 Forest LOD Repair
-          - Preserves a higher-density 18% selection of whole connected snow and needle islands in repeated V52 trees.
-          - Increases bough detail and retains 18% of complete connected snow/needle islands in the shared forest LOD.
-          - Retains the high-detail hero and the same V52 source for all other conifers.
-          - Includes the automated test report, QA JSON, and actual Blender LOD comparison render.
-          - In-browser visuals and target-PC FPS still need user review.
+          - F3: performance, player, and live V52 LOD diagnostics
           """
           (game / "README.md").write_text(readme, encoding="utf-8")
-
           progress = """# Winter World — Development Progress
 
           ## Current status
-          - **Latest build:** 017
-          - **Current milestone:** M2 — Quality Benchmark
-          - **Current sub-pass:** Shape-preserving V52 forest LOD repair
-          - **Build 016 issue:** The repeated forest LOD was reduced by randomly deleting individual faces from dense snow and needle meshes. This fragmented the authored surfaces and caused non-hero trees to look broken.
-          - **Build 018 fix:** A substantially denser 18% selection of complete connected snow and needle islands is sampled as units. The repeated trees now retain far more of the V52 snow-and-needle coverage while remaining lighter than the hero mesh.
+          - **Latest build:** 019
+          - **Milestone:** M2 — Quality Benchmark
+          - **Current pass:** Distance-based V52 conifer LODs
 
-          ## Build 018 — Implemented
-          - V52 Z-up to WebGL Y-up conversion and y=0 root normalization retained.
-          - Every conifer still uses the V52 source asset.
-          - Snow and needle geometry uses deterministic higher-density whole-island sampling, not random face deletion.
-          - Added geometry QA, a test report, and an actual Blender LOD comparison render.
+          ## Build 019
+          - Root cause: Build 018's 18% sampling followed heavy component decimation, compounding snow/needle loss.
+          - Medium and far trees now retain 70% and 28% of complete connected snow/needle islands.
+          - Runtime selects full hero (<26m), medium (26–78m), and far (>78m) meshes; small and distant trees are assigned far LOD.
+          - Restored Markdown/JSON QA reports and actual exported-mesh render.
 
-          ## Pending
-          - User visual confirmation in the live browser.
-          - Target-PC frame-rate and visual review.
+          ## Pending user review
+          - Live browser visual confirmation.
+          - Target-PC FPS check.
           """
           (game / "PROGRESS.md").write_text(progress, encoding="utf-8")
           PY
 
-      - name: Validate JavaScript, mesh buffers, and package
+      - name: Validate JavaScript, mesh buffers, LOD selection, and package
         shell: bash
         run: |
           set -euo pipefail
@@ -187,121 +176,117 @@ jobs:
           node --check src/sakura_mesh_data.js
           node --check src/hero_spruce_v52_data.js
           node --check src/forest_spruce_v52_data.js
+          node --check src/forest_spruce_v52_low_data.js
           node - <<'JS'
           const fs = require('fs');
           const vm = require('vm');
-
           function validateMesh(file, globalName, minTriangles, maxTriangles) {
             const context = { window: {} };
             vm.runInNewContext(fs.readFileSync(file, 'utf8'), context);
             const d = context.window[globalName];
             if (!d || !d.vertexCount || !d.triangleCount) throw new Error(globalName + ' metadata missing');
-            const vertices = Buffer.from(d.vertices, 'base64');
-            const indices = Buffer.from(d.indices, 'base64');
-            if (vertices.length !== d.vertexCount * 9 * 4) throw new Error(globalName + ' vertex buffer length mismatch');
-            if (indices.length !== d.triangleCount * 3 * 4) throw new Error(globalName + ' index buffer length mismatch');
+            const vertices = Buffer.from(d.vertices, 'base64'), indices = Buffer.from(d.indices, 'base64');
+            if (vertices.length !== d.vertexCount * 36) throw new Error(globalName + ' vertex buffer length mismatch');
+            if (indices.length !== d.triangleCount * 12) throw new Error(globalName + ' index buffer length mismatch');
             const floats = new Float32Array(vertices.buffer, vertices.byteOffset, vertices.length / 4);
-            for (let i = 0; i < floats.length; i++) if (!Number.isFinite(floats[i])) throw new Error(globalName + ' contains a non-finite vertex attribute');
+            for (const value of floats) if (!Number.isFinite(value)) throw new Error(globalName + ' non-finite vertex attribute');
             const ix = new Uint32Array(indices.buffer, indices.byteOffset, indices.length / 4);
-            let max = 0;
-            for (const value of ix) if (value > max) max = value;
+            let max = 0; for (const value of ix) if (value > max) max = value;
             if (max >= d.vertexCount) throw new Error(globalName + ' index exceeds vertex buffer');
             if (d.triangleCount < minTriangles || d.triangleCount > maxTriangles) throw new Error(globalName + ' triangle budget exceeded');
             return {vertices:d.vertexCount,triangles:d.triangleCount,maxIndex:max,vertexBytes:vertices.length,indexBytes:indices.length};
           }
-
-          const hero = validateMesh('src/hero_spruce_v52_data.js', 'WinterWorldHeroSpruceV52Data', 180000, 900000);
-          const forest = validateMesh('src/forest_spruce_v52_data.js', 'WinterWorldForestSpruceV52Data', 150000, 190000);
-          const stats = JSON.parse(fs.readFileSync('src/hero_spruce_v52_stats.json', 'utf8'));
-          for (const lod of [stats.hero_lod, stats.forest_lod]) {
+          const hero = validateMesh('src/hero_spruce_v52_data.js','WinterWorldHeroSpruceV52Data',180000,900000);
+          const forest = validateMesh('src/forest_spruce_v52_data.js','WinterWorldForestSpruceV52Data',550000,640000);
+          const forestLow = validateMesh('src/forest_spruce_v52_low_data.js','WinterWorldForestLowSpruceV52Data',210000,280000);
+          const stats = JSON.parse(fs.readFileSync('src/hero_spruce_v52_stats.json','utf8'));
+          for (const lod of [stats.hero_lod,stats.forest_lod,stats.forest_low_lod]) {
             if (!lod || lod.coordinate_conversion.position_and_normal_mapping !== '(x, y, z) -> (x, z, -y)') throw new Error('V52 axis conversion metadata missing');
-            if (!(lod.bounds_m.height > Math.max(lod.bounds_m.width, lod.bounds_m.depth))) throw new Error('V52 mesh failed upright bounds check');
-            if (Math.abs(lod.bounds_m.height - stats.hero_lod.bounds_m.height) > 0.03) throw new Error('Hero/forest tree heights do not match');
+            if (!(lod.bounds_m.height > Math.max(lod.bounds_m.width,lod.bounds_m.depth))) throw new Error('V52 mesh failed upright bounds check');
+            if (Math.abs(lod.bounds_m.height-stats.hero_lod.bounds_m.height)>.03) throw new Error('V52 LOD heights do not match');
           }
-          for (const name of ['Spruce_Settled_Snow_Patches','Spruce_Individual_Needles']) {
-            const sampling = stats.forest_lod.components[name]?.island_sampling;
-            if (!sampling || sampling.method !== 'deterministic_whole_connected_islands') throw new Error(name + ' is not using higher-density intact-island sampling');
-            if (!sampling.retained_islands || sampling.retained_islands < 1) throw new Error(name + ' retained no complete islands');
-            if (sampling.actual_face_percent < 14 || sampling.actual_face_percent > 21) throw new Error(name + ' island sample is outside the quality budget');
+          for (const [lod,minPct,maxPct] of [[stats.forest_lod,64,76],[stats.forest_low_lod,24,32]]) {
+            for (const name of ['Spruce_Settled_Snow_Patches','Spruce_Individual_Needles']) {
+              const sampling=lod.components[name]?.island_sampling;
+              if (!sampling || sampling.method!=='deterministic_whole_connected_islands' || !sampling.retained_islands) throw new Error(name+' complete island sampling missing');
+              if (sampling.actual_face_percent<minPct || sampling.actual_face_percent>maxPct) throw new Error(name+' island coverage outside LOD budget');
+            }
           }
-          const html = fs.readFileSync('index.html', 'utf8');
-          for (const file of ['src/hero_spruce_v52_data.js','src/forest_spruce_v52_data.js']) {
-            if (!html.includes(file)) throw new Error(file + ' not loaded by index.html');
-          }
-          const main = fs.readFileSync('src/main.js', 'utf8');
-          if (main.includes('mesh:firSpecies[') || main.includes('add(pineCone')) throw new Error('Legacy conifer placement remains');
-          if (!main.includes('mesh:forestSpruceV52Mesh')) throw new Error('V52 forest mesh not used for conifer placement');
-          const qa = {
-            build: '018',
-            source: 'V52 Cycles spruce',
-            automated_tests: [
-              {name:'Hero and forest WebGL mesh buffers',status:'PASS',details:'Buffer lengths, finite attributes, valid indices, and triangle budgets'},
+          const html=fs.readFileSync('index.html','utf8');
+          for (const file of ['src/hero_spruce_v52_data.js','src/forest_spruce_v52_data.js','src/forest_spruce_v52_low_data.js']) if(!html.includes(file)) throw new Error(file+' not loaded');
+          const main=fs.readFileSync('src/main.js','utf8');
+          for (const required of ['lodMeshes:{hero:heroSpruceV52Mesh,medium:forestSpruceV52Mesh,far:forestLowSpruceV52Mesh}','rebuildSceneBatches','distance>=78','distance<26']) if(!main.includes(required)) throw new Error('Distance LOD runtime wiring missing: '+required);
+          if (main.includes('mesh:firSpecies[') || main.includes('add(pineCone')) throw new Error('Legacy conifer geometry remains');
+          const qa={
+            build:'019',source:'V52 Cycles spruce',
+            automated_tests:[
+              {name:'Hero, medium, far WebGL buffers',status:'PASS',details:'Lengths, finite attributes, indices, and triangle budgets'},
               {name:'Blender Z-up to WebGL Y-up conversion',status:'PASS',details:stats.coordinate_conversion.position_and_normal_mapping},
-              {name:'Tree orientation and matching height',status:'PASS',details:'Both LOD bounds are upright and height-matched'},
-              {name:'Root snow skirt placement',status:'PASS',details:'Lowest vertex normalized to y=0'},
-              {name:'Higher-density snow and needle coverage',status:'PASS',details:'Forest LOD uses 18% whole-connected-island sampling'},
-              {name:'All conifer placements use V52',status:'PASS',details:'No legacy procedural or cone fallback remains'},
-              {name:'JavaScript syntax',status:'PASS'},
+              {name:'Three upright tree LOD bounds',status:'PASS',details:'All heights match and exceed width/depth'},
+              {name:'Root snow skirt placement',status:'PASS',details:'All three LODs normalized to y=0'},
+              {name:'Complete snow/needle coverage',status:'PASS',details:'Medium 70%, far 28% whole-island sampling'},
+              {name:'Distance-based runtime selection',status:'PASS',details:'Hero <26m; medium 26–78m; far >=78m; small/ridge trees far'},
+              {name:'All conifer placements use V52',status:'PASS',details:'Legacy procedural/cone geometry absent'},
+              {name:'JavaScript syntax and script loading',status:'PASS'}
             ],
-            meshes:{hero,forest},
-            mesh_stats:stats,
+            meshes:{hero,forest,forestLow},mesh_stats:stats,
             manual_tests:[
               {name:'Visual review in live browser',status:'PENDING_USER_REVIEW'},
-              {name:'Target-PC frame-rate check',status:'PENDING_USER_REVIEW'},
+              {name:'Target-PC frame-rate check',status:'PENDING_USER_REVIEW'}
             ]
           };
-          fs.writeFileSync('../../BUILD_018_TEST_REPORT.json', JSON.stringify(qa,null,2));
-          console.log(JSON.stringify({hero,forest,coordinateConversion:stats.coordinate_conversion},null,2));
+          fs.writeFileSync('../../BUILD_019_TEST_REPORT.json',JSON.stringify(qa,null,2));
+          console.log(JSON.stringify({hero,forest,forestLow,placement:stats.placement},null,2));
           JS
           cd ../..
-          cd work && zip -qr -9 ../WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip WinterWorld_Prototype && cd ..
-          unzip -tq WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip
+          cd work && zip -qr -9 ../WinterWorld_Playtest_Build019_V52_DistanceLOD.zip WinterWorld_Prototype && cd ..
+          unzip -tq WinterWorld_Playtest_Build019_V52_DistanceLOD.zip
           python - <<'PY'
           import json
           from pathlib import Path
-          report_path = Path('BUILD_018_TEST_REPORT.json')
-          report = json.loads(report_path.read_text(encoding='utf-8'))
-          report['automated_tests'].append({'name': 'Playable ZIP integrity', 'status': 'PASS', 'details': 'unzip -t completed without errors'})
-          report_path.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
-          lines = [
-              '# Build 018 — Automated Test Report',
-              '',
-              '## Automated checks',
-              '',
-          ]
-          for test in report['automated_tests']:
-              lines.append(f"- **{test['status']}** — {test['name']}: {test.get('details', '')}")
-          forest = report['mesh_stats']['forest_lod']
-          hero = report['mesh_stats']['hero_lod']
+          path=Path('BUILD_019_TEST_REPORT.json')
+          report=json.loads(path.read_text(encoding='utf-8'))
+          report['automated_tests'].append({'name':'Playable ZIP integrity','status':'PASS','details':'unzip -t completed without errors'})
+          path.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          stats=report['mesh_stats']
+          hero,medium,far=stats['hero_lod'],stats['forest_lod'],stats['forest_low_lod']
+          lines=['# Build 019 — Automated Test Report','','## Automated checks','']
+          for test in report['automated_tests']: lines.append(f"- **{test['status']}** — {test['name']}: {test.get('details','')}")
           lines += [
-              '', '## Geometry summary', '',
-              f"- Hero V52 LOD: {hero['game_triangles']:,} triangles; {hero['vertex_count']:,} vertices.",
-              f"- Repeated forest V52 LOD: {forest['game_triangles']:,} triangles; {forest['vertex_count']:,} vertices.",
-              f"- Upright bounds: {hero['bounds_m']['height']:.3f} m high; forest width {forest['bounds_m']['width']:.3f} m; depth {forest['bounds_m']['depth']:.3f} m.",
-              '- Snow and needle faces are retained as complete connected islands, rather than randomly selected individual faces.',
-              '', '## Not yet verified', '',
-              '- **Pending user review:** actual appearance in the live browser on the user\'s display.',
-              '- **Pending user review:** frame rate on the target PC. CI geometry and syntax checks do not establish target-hardware FPS.',
-              '', '## Blender preview', '',
-              'The attached `V52_Build018_Hero_vs_ForestLOD.png` is rendered from the actual exported buffers for the hero and repeated forest LOD.',
+            '', '## Geometry summary', '',
+            f"- Near/hero V52 LOD: {hero['game_triangles']:,} triangles; {hero['vertex_count']:,} vertices.",
+            f"- Medium V52 LOD: {medium['game_triangles']:,} triangles; {medium['vertex_count']:,} vertices.",
+            f"- Far V52 LOD: {far['game_triangles']:,} triangles; {far['vertex_count']:,} vertices.",
+            f"- Shared upright height: {hero['bounds_m']['height']:.3f} m.",
+            '- Medium retains 70% and far retains 28% of the complete connected snow/needle islands.',
+            '', '## Runtime thresholds', '',
+            '- Full hero mesh: under 26m.',
+            '- Fuller medium mesh: 26m to under 78m.',
+            '- Far mesh: 78m and beyond; also used on small understory and distant ridgeline trees.',
+            '', '## Not yet verified', '',
+            '- **Pending user review:** actual appearance in the live browser.',
+            '- **Pending user review:** target-PC frame rate. CI geometry checks do not establish target-hardware FPS.',
+            '', '## Blender preview', '',
+            'The attached V52_Build019_Hero_Medium_Far_LODs.png is rendered from the actual exported near, medium, and far buffers.'
           ]
-          Path('BUILD_018_TEST_REPORT.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          Path('BUILD_019_TEST_REPORT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
           PY
-          ls -lh WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip BUILD_018_TEST_REPORT.md BUILD_018_TEST_REPORT.json V52_Build018_Hero_vs_ForestLOD.png work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
+          ls -lh WinterWorld_Playtest_Build019_V52_DistanceLOD.zip BUILD_019_TEST_REPORT.md BUILD_019_TEST_REPORT.json V52_Build019_Hero_Medium_Far_LODs.png work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json work/WinterWorld_Prototype/src/forest_spruce_v52_data.js work/WinterWorld_Prototype/src/forest_spruce_v52_low_data.js
 
-      - name: Upload Build 018 repair build, reports, and renders
+      - name: Upload Build 019 distance-LOD build, reports, and renders
         uses: actions/upload-artifact@v4
         with:
-          name: WinterWorld-Build018-V52-FullerConiferForest
+          name: WinterWorld-Build019-V52-DistanceLOD
           path: |
-            WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip
+            WinterWorld_Playtest_Build019_V52_DistanceLOD.zip
             work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
-            work/WinterWorld_Prototype/BUILD_018_CHANGELOG.md
-            BUILD_018_TEST_REPORT.md
-            BUILD_018_TEST_REPORT.json
-            V52_Build018_Hero_vs_ForestLOD.png
+            work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
+            work/WinterWorld_Prototype/src/forest_spruce_v52_low_data.js
+            work/WinterWorld_Prototype/BUILD_019_CHANGELOG.md
+            BUILD_019_TEST_REPORT.md
+            BUILD_019_TEST_REPORT.json
+            V52_Build019_Hero_Medium_Far_LODs.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_Bough_SnowContact_Closeup.png
           if-no-files-found: error
           retention-days: 14
-

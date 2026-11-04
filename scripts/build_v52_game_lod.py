@@ -19,6 +19,7 @@ def env_required(key):
 input_glb = env_required("V52_INPUT_GLB")
 output_hero_js = env_required("V52_OUTPUT_HERO_JS")
 output_forest_js = env_required("V52_OUTPUT_FOREST_JS")
+output_forest_low_js = env_required("V52_OUTPUT_FOREST_LOW_JS")
 output_stats = env_required("V52_OUTPUT_STATS")
 output_preview = env_required("V52_OUTPUT_PREVIEW")
 
@@ -35,8 +36,18 @@ FOREST_COMPONENT_RATIOS = {
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 18.0,
-    "Spruce_Individual_Needles": 18.0,
+    "Spruce_Settled_Snow_Patches": 70.0,
+    "Spruce_Individual_Needles": 70.0,
+}
+FOREST_LOW_COMPONENT_RATIOS = {
+    "Spruce_Trunk_Bark": 0.85,
+    "Spruce_Primary_Secondary_Boughs": 0.15,
+    "Spruce_Settled_Snow_Patches": 0.0045,
+    "Spruce_Individual_Needles": 0.03,
+}
+FOREST_LOW_ISLAND_KEEP_PERCENT = {
+    "Spruce_Settled_Snow_Patches": 28.0,
+    "Spruce_Individual_Needles": 28.0,
 }
 
 
@@ -152,10 +163,15 @@ def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
             bpy.ops.object.modifier_apply(modifier=modifier.name)
 
         island_sampling = None
-        if label == "Forest" and name in FOREST_ISLAND_KEEP_PERCENT:
+        if label in ("Forest", "ForestLow") and name in FOREST_ISLAND_KEEP_PERCENT:
+            keep_percent = (
+                FOREST_LOW_ISLAND_KEEP_PERCENT[name]
+                if label == "ForestLow"
+                else FOREST_ISLAND_KEEP_PERCENT[name]
+            )
             island_sampling = keep_connected_island_sample(
                 obj,
-                FOREST_ISLAND_KEEP_PERCENT[name],
+                keep_percent,
                 seed=sum(ord(char) for char in name),
             )
 
@@ -307,8 +323,15 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=150_000,
-    max_triangles=190_000,
+    min_triangles=550_000,
+    max_triangles=640_000,
+)
+forest_low_stats = write_mesh_lod(
+    "ForestLow",
+    FOREST_LOW_COMPONENT_RATIOS,
+    output_forest_low_js,
+    min_triangles=210_000,
+    max_triangles=280_000,
 )
 
 combined_stats = {
@@ -316,14 +339,15 @@ combined_stats = {
     "coordinate_conversion": hero_stats["coordinate_conversion"],
     "hero_lod": hero_stats,
     "forest_lod": forest_stats,
+    "forest_low_lod": forest_low_stats,
     "placement": {
         "hero": {"x": 10.0, "z": -4.0, "scale": 1.0},
-        "forest": "All conifer placements use the same V52-derived forest LOD; no legacy procedural or cone conifer geometry remains.",
+        "forest": "Distance-selected V52 LODs: full hero inside 26m, fuller medium LOD from 26m to 78m, low LOD beyond 78m or for small trees.",
     },
     "integration": (
-        "Every conifer in the playable forest, young understory, and distant ridgeline "
-        "uses the final V52 spruce asset. One near-path instance uses the full hero LOD; "
-        "all other instances use a shared lightweight LOD generated from the same V52 source."
+        "Every conifer uses the same final V52 spruce source. Trees near the player use "
+        "the full hero mesh, mid-distance trees use the fuller medium LOD, and far/small "
+        "trees use the low LOD."
     ),
 }
 with open(output_stats, "w", encoding="utf-8") as handle:
@@ -332,12 +356,13 @@ with open(output_stats, "w", encoding="utf-8") as handle:
 print(
     "V52 LODs complete: "
     f"hero {hero_stats['game_triangles']:,} triangles; "
-    f"forest {forest_stats['game_triangles']:,} triangles; "
+    f"medium {forest_stats['game_triangles']:,} triangles; "
+    f"far {forest_low_stats['game_triangles']:,} triangles; "
     f"upright height {hero_stats['bounds_m']['height']:.3f} m."
 )
 
-def render_lod_comparison_preview(hero_js, forest_js, output_png):
-    """Render the exported hero and intact-island forest LOD buffers side-by-side."""
+def render_lod_comparison_preview(hero_js, forest_js, forest_low_js, output_png):
+    """Render the exported hero, medium, and far LOD buffers side-by-side."""
     def load_buffers(path):
         with open(path, "r", encoding="utf-8") as handle:
             source = handle.read()
@@ -375,12 +400,13 @@ def render_lod_comparison_preview(hero_js, forest_js, output_png):
         mesh.materials.append(material)
         return mesh
 
-    hero_mesh = make_preview_mesh("V52 Hero", hero_js)
-    forest_mesh = make_preview_mesh("V52 Forest LOD", forest_js)
+    hero_mesh = make_preview_mesh("V52 Hero near LOD", hero_js)
+    forest_mesh = make_preview_mesh("V52 Forest medium LOD", forest_js)
+    forest_low_mesh = make_preview_mesh("V52 Forest far LOD", forest_low_js)
     for label, mesh, x, scale in [
-        ("Hero reference", hero_mesh, -5.0, 1.0),
-        ("Forest LOD", forest_mesh, 5.0, 1.0),
-        ("Forest LOD instance", forest_mesh, 14.0, 0.82),
+        ("Hero near LOD", hero_mesh, -8.0, 1.0),
+        ("Forest medium LOD", forest_mesh, 0.0, 1.0),
+        ("Forest far LOD", forest_low_mesh, 8.0, 1.0),
     ]:
         obj = bpy.data.objects.new(label, mesh)
         bpy.context.scene.collection.objects.link(obj)
@@ -389,7 +415,7 @@ def render_lod_comparison_preview(hero_js, forest_js, output_png):
 
     ground_mesh = bpy.data.meshes.new("preview snow ground")
     ground_mesh.from_pydata(
-        [(-16, 0, -10), (-16, 0, 10), (17, 0, 10), (17, 0, -10)],
+        [(-18, 0, -10), (-18, 0, 10), (18, 0, 10), (18, 0, -10)],
         [],
         [(0, 1, 2, 3)],
     )
@@ -405,11 +431,11 @@ def render_lod_comparison_preview(hero_js, forest_js, output_png):
         direction = Vector(point) - obj.location
         obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
-    bpy.ops.object.camera_add(location=(3.0, 10.0, 32.0))
+    bpy.ops.object.camera_add(location=(0.0, 10.0, 36.0))
     camera = bpy.context.object
-    aim(camera, (2.0, 4.1, 0.0))
+    aim(camera, (0.0, 4.1, 0.0))
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 25.5
+    camera.data.ortho_scale = 32.0
     bpy.context.scene.camera = camera
 
     bpy.ops.object.light_add(type="AREA", location=(0.0, 13.0, 8.0))
@@ -439,8 +465,13 @@ def render_lod_comparison_preview(hero_js, forest_js, output_png):
     scene.render.filepath = output_png
     bpy.ops.render.render(write_still=True)
     if not os.path.isfile(output_png) or os.path.getsize(output_png) < 50_000:
-        raise RuntimeError("The Build 017 V52 LOD comparison preview was not rendered.")
-    print(f"Rendered actual V52 hero/forest LOD comparison: {output_png}")
+        raise RuntimeError("The Build 019 V52 distance-LOD comparison preview was not rendered.")
+    print(f"Rendered actual V52 near/medium/far LOD comparison: {output_png}")
 
 
-render_lod_comparison_preview(output_hero_js, output_forest_js, output_preview)
+render_lod_comparison_preview(
+    output_hero_js,
+    output_forest_js,
+    output_forest_low_js,
+    output_preview,
+)
