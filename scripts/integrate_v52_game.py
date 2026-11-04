@@ -280,20 +280,20 @@ A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 016 fi
 
 ## Run the world
 1. Extract the ZIP.
-2. Open the \`WinterWorld_Prototype\` folder.
-3. Open \`index.html\` in a current Chrome or Edge browser.
+2. Open the `WinterWorld_Prototype` folder.
+3. Open `index.html` in a current Chrome or Edge browser.
 4. Click **Enter the World**.
 
-If local-file rendering is blocked, run \`py -m http.server 8000\` in this folder and open \`http://127.0.0.1:8000/\`.
+If local-file rendering is blocked, run `py -m http.server 8000` in this folder and open `http://127.0.0.1:8000/`.
 
 ## Controls
-- \`W\`, \`A\`, \`S\`, \`D\` or arrow keys: move
+- `W`, `A`, `S`, `D` or arrow keys: move
 - Mouse: look around
-- \`Shift\`: move faster
-- \`Esc\`: release the mouse / close settings
+- `Shift`: move faster
+- `Esc`: release the mouse / close settings
 - Click the scene: capture the mouse
-- \`E\`: development note
-- \`F3\`: performance and player diagnostics
+- `E`: development note
+- `F3`: performance and player diagnostics
 
 ## Build 016 — V52 Conifer Forest
 - Corrects Blender Z-up to WebGL Y-up orientation.
