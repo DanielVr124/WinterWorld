@@ -273,7 +273,7 @@ changelog = """# Build 016 — Upright V52 Spruce Across the Entire Conifer Fore
 - JavaScript syntax, finite vertex, index-range, mesh-buffer, triangle-budget, and ZIP-integrity checks.
 - Target-PC visual and FPS review still requires user testing.
 """
-(game / "BUILD_016_CHANGELOG.md").write_text(changelog, encoding="utf-8", newline="\\n")
+(game / "BUILD_016_CHANGELOG.md").write_text(changelog, encoding="utf-8", newline="\n")
 readme = """# Winter World — Development Build 016
 
 A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 016 fixes the V52 spruce orientation and replaces every conifer in the playable forest with the final V52 model. The near-path showcase tree uses a high-detail LOD; all other conifers use a lightweight LOD derived from the same asset.
@@ -302,7 +302,7 @@ If local-file rendering is blocked, run `py -m http.server 8000` in this folder 
 - Sakura and the rest of the existing world remain unchanged.
 - Visual review and target-PC performance testing are pending.
 """
-readme_path.write_text(readme, encoding="utf-8", newline="\\n")
+readme_path.write_text(readme, encoding="utf-8", newline="\n")
 progress = """# Winter World — Development Progress
 
 ## Current status
@@ -323,5 +323,5 @@ progress = """# Winter World — Development Progress
 - User visual confirmation of upright orientation and consistent V52 conifer coverage.
 - Target-PC FPS and visual review.
 """
-progress_path.write_text(progress, encoding="utf-8", newline="\\n")
+progress_path.write_text(progress, encoding="utf-8", newline="\n")
 print("Prepared Build 016: all conifers use upright V52 geometry and shared LODs.")
