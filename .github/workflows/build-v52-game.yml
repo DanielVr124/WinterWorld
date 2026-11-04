@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: winterworld-build016-v52
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
