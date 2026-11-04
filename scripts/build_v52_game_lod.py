@@ -1,7 +1,9 @@
 import base64
 import json
 import os
+import random
 
+import bmesh
 import bpy
 import numpy as np
 
@@ -26,36 +28,87 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.03,
+    "Spruce_Primary_Secondary_Boughs": 0.12,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
-FOREST_RANDOM_FACE_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 1.7,
-    "Spruce_Individual_Needles": 1.7,
+FOREST_ISLAND_KEEP_PERCENT = {
+    "Spruce_Settled_Snow_Patches": 5.0,
+    "Spruce_Individual_Needles": 5.0,
 }
 
 
-def keep_distributed_face_sample(obj, keep_percent, seed):
-    # These V52 components contain many tiny disconnected snow/needle pieces.
-    # Collapse decimation cannot reduce those islands below their per-piece floor.
-    # Keep a deterministic, evenly distributed random face sample for the forest
-    # LOD; the full hero LOD retains every authored face.
-    bpy.ops.object.select_all(action="DESELECT")
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_mode(type="FACE")
-    bpy.ops.mesh.select_all(action="DESELECT")
-    bpy.ops.mesh.select_random(ratio=keep_percent / 100.0, seed=seed, action="SELECT")
-    bpy.ops.mesh.select_all(action="INVERT")
-    bpy.ops.mesh.delete(type="ONLY_FACE")
-    bpy.ops.mesh.select_all(action="DESELECT")
-    bpy.ops.mesh.select_mode(type="VERT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.mesh.delete_loose(use_verts=True, use_edges=True, use_faces=False)
-    bpy.ops.object.mode_set(mode="OBJECT")
-    obj.data.update()
+def keep_connected_island_sample(obj, keep_percent, seed):
+    """Keep complete connected snow/needle islands instead of randomly chopping faces."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.faces.ensure_lookup_table()
+    remaining = set(bm.faces)
+    components = []
+
+    while remaining:
+        first = remaining.pop()
+        stack = [first]
+        component = [first]
+        while stack:
+            face = stack.pop()
+            for edge in face.edges:
+                for neighbor in edge.link_faces:
+                    if neighbor in remaining:
+                        remaining.remove(neighbor)
+                        stack.append(neighbor)
+                        component.append(neighbor)
+        components.append(component)
+
+    input_face_count = len(bm.faces)
+    target_faces = max(1, round(input_face_count * keep_percent / 100.0))
+    rng = random.Random(seed)
+    ranked = [(rng.random(), component) for component in components]
+    ranked.sort(key=lambda item: item[0])
+
+    kept_faces = []
+    kept_face_count = 0
+    for _, component in ranked:
+        component_size = len(component)
+        if kept_face_count + component_size <= target_faces:
+            kept_faces.extend(component)
+            kept_face_count += component_size
+
+    if not kept_faces and components:
+        smallest = min(components, key=len)
+        kept_faces.extend(smallest)
+        kept_face_count = len(smallest)
+
+    kept_set = set(kept_faces)
+    discarded = [face for face in bm.faces if face not in kept_set]
+    if discarded:
+        bmesh.ops.delete(bm, geom=discarded, context="FACES")
+    loose_edges = [edge for edge in bm.edges if not edge.link_faces]
+    if loose_edges:
+        bmesh.ops.delete(bm, geom=loose_edges, context="EDGES")
+    loose_vertices = [vertex for vertex in bm.verts if not vertex.link_edges]
+    if loose_vertices:
+        bmesh.ops.delete(bm, geom=loose_vertices, context="VERTS")
+
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+    mesh.calc_loop_triangles()
+    output_triangles = len(mesh.loop_triangles)
+    retained_islands = sum(
+        1 for component in components if all(face in kept_set for face in component)
+    )
+    return {
+        "method": "deterministic_whole_connected_islands",
+        "source_islands": len(components),
+        "retained_islands": retained_islands,
+        "source_faces": input_face_count,
+        "retained_faces": kept_face_count,
+        "target_face_percent": keep_percent,
+        "actual_face_percent": round((kept_face_count / max(1, input_face_count)) * 100.0, 3),
+        "output_triangles": output_triangles,
+    }
 
 
 def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
@@ -96,10 +149,11 @@ def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
             modifier.use_collapse_triangulate = True
             bpy.ops.object.modifier_apply(modifier=modifier.name)
 
-        if label == "Forest" and name in FOREST_RANDOM_FACE_KEEP_PERCENT:
-            keep_distributed_face_sample(
+        island_sampling = None
+        if label == "Forest" and name in FOREST_ISLAND_KEEP_PERCENT:
+            island_sampling = keep_connected_island_sample(
                 obj,
-                FOREST_RANDOM_FACE_KEEP_PERCENT[name],
+                FOREST_ISLAND_KEEP_PERCENT[name],
                 seed=sum(ord(char) for char in name),
             )
 
@@ -168,6 +222,8 @@ def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
             "vertices": int(vertex_count),
             "decimate_ratio": ratio,
         }
+        if island_sampling is not None:
+            component_stats[name]["island_sampling"] = island_sampling
         print(
             f"{label} / {name}: {source_triangles:,} -> "
             f"{output_triangles:,} triangles, {vertex_count:,} vertices"
@@ -249,8 +305,8 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=3_000,
-    max_triangles=25_000,
+    min_triangles=35_000,
+    max_triangles=100_000,
 )
 
 combined_stats = {
