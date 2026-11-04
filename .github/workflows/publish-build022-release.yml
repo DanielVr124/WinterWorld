@@ -1,0 +1,76 @@
+name: Publish Winter World Development Build 022 Release
+
+on:
+  workflow_run:
+    workflows:
+      - Build Winter World 022 with fuller V52 spruce branch structure
+    types:
+      - completed
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-build022-release.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the successful Build 022 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build022-V52-FullerBoughs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id || 'BUILD_RUN_ID' }}
+          path: artifacts
+
+      - name: Prepare release assets and verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find_one() {
+            local name="$1"
+            local found
+            found="$(find artifacts -type f -name "$name" -print -quit)"
+            if [[ -z "$found" || ! -s "$found" ]]; then
+              echo "::error::Required Build 022 release asset is missing: $name"
+              exit 1
+            fi
+            cp "$found" "release-assets/$name"
+          }
+          find_one "WinterWorld_Playtest_Build022_V52_FullerBoughs.zip"
+          find_one "hero_spruce_v52_stats.json"
+          find_one "BUILD_022_CHANGELOG.md"
+          find_one "BUILD_022_TEST_REPORT.md"
+          find_one "BUILD_022_TEST_REPORT.json"
+          find_one "V52_Build022_Hero_Medium_Far_LODs.png"
+          find_one "V52_Cycles_FullTree_ZUp_Framed_40mm.png"
+          find_one "V52_Cycles_Bough_SnowContact_Closeup.png"
+          unzip -tq release-assets/WinterWorld_Playtest_Build022_V52_FullerBoughs.zip
+          ls -lh release-assets/
+
+      - name: Publish the numbered GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TARGET: ${{ github.event.workflow_run.head_sha || 'BUILD_COMMIT_SHA' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="winter-world-build-022-v52-fuller-boughs"
+          TITLE="Winter World Development Build 022 — Fuller V52 Spruce Boughs"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --title "$TITLE" \
+              --notes-file release-assets/BUILD_022_CHANGELOG.md \
+              --target "$TARGET"
+          fi
