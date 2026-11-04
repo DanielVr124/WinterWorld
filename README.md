@@ -2,34 +2,31 @@
 
 A public, browser-playable WebGL2 first-person winter-world prototype.
 
-**Current build:** Development Build 020 — V52 Performance LODs  
+**Current build:** Development Build 022 — Fuller V52 Spruce Boughs  
 **Live playtest:** https://danielvr124.github.io/WinterWorld/  
-**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-020-v52-performance-lod
+**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-022-v52-fuller-boughs
 
-## Build 020 — V52 forest performance fix
+## Build 022 — fuller V52 forest LODs
 
-Build 019 rendered far too much geometry at once. Its ordinary trees could use the 834,798-triangle hero mesh near the player, the 577,808-triangle medium mesh, or the 241,964-triangle far mesh. Instancing reduced draw calls but did not reduce the triangle workload.
-
-Build 020 keeps the full-detail mesh on the single showcase tree and uses smaller V52-derived meshes for every other conifer:
+Build 020 solved the severe performance problem, but its medium and far tree variants lost too much of the source tree's foliage and branch structure. Build 021 distributed snow and needle islands across the crown; Build 022 also restores substantially more of the authored branch geometry.
 
 - **Showcase:** 834,798 triangles.
-- **Ordinary medium trees:** 54,812 triangles each, used within 68m.
-- **Far trees:** 21,534 triangles each, used beyond 68m and for small understory/ridgeline trees.
+- **Ordinary medium trees:** 108,394 triangles each, with 25% of the source bough component retained; used within 68m.
+- **Far trees:** 43,100 triangles each, with 10% of the source bough component retained; used beyond 68m and for small understory/ridgeline trees.
+- Snow and needle islands are sampled across eight vertical bands and twelve azimuth sectors, rather than randomly across the entire mesh.
+- The full-detail mesh remains restricted to the single showcase tree. Ordinary trees continue to use distance-based LODs.
+- GPU instance buffers rebuild only when a tree crosses an LOD boundary, not during ordinary movement.
 
-The meshes are generated independently from the original V52 source. The runtime now rebuilds GPU instance buffers only when a tree crosses an LOD boundary, not during ordinary movement.
-
-Based on the current forest placements at the starting viewpoint, this reduces the estimated tree workload from about 67.3 million to 6.2 million triangles per frame (roughly 10.9× fewer). This is a geometry estimate, not a measured FPS result.
+Based on the existing starting-view forest placement counts (74 medium, 61 far, and one showcase tree), the estimated workload is about **11.5 million tree triangles per frame**, compared with about **67.3 million** in the laggy Build 019 configuration (roughly **5.9× fewer**). This is a geometry estimate, not a measured FPS result. Build 022 passed the automated mesh, coverage, orientation, LOD wiring, JavaScript, and ZIP-integrity checks; actual in-browser appearance and target-PC FPS still require hands-on review.
 
 ## Build downloads and reports
 
-The [Build 020 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-020-v52-performance-lod) includes:
-- Playable Build 020 ZIP.
+The [Build 022 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-022-v52-fuller-boughs) includes:
+- Playable Build 022 ZIP.
 - Automated test report (Markdown).
 - Machine-readable QA results (JSON).
-- Blender comparison render of the actual showcase, medium, and far mesh buffers.
+- Blender comparison render of the actual hero, medium, and far mesh buffers.
 - V52 source renders, geometry stats, and changelog.
-
-**Test distinction:** the automated geometry, buffer, orientation, LOD wiring, JavaScript, and ZIP checks passed in CI. Actual frame rate and in-browser visual quality on target hardware still need hands-on review.
 
 ## Run locally
 
@@ -54,3 +51,5 @@ The [Build 020 GitHub Release](https://github.com/DanielVr124/WinterWorld/releas
 - **Build 017–018:** Tried connected-island sampling; repeated trees remained too sparse.
 - **Build 019:** Added distance-based detail, but left ordinary trees far too expensive.
 - **Build 020:** Keeps the full hero mesh on the showcase tree, reduces ordinary tree meshes to practical budgets, and removes unnecessary GPU-buffer uploads while walking.
+- **Build 021:** Spreads retained snow and needle islands across the tree crown.
+- **Build 022:** Restores more authored bough structure while keeping ordinary trees on the optimized medium/far LODs.
