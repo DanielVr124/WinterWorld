@@ -21,7 +21,7 @@ The V52 build pipeline runs on the `render-v52-cycles` branch through `.github/w
 
 The default-branch workflow at `.github/workflows/deploy-pages.yml` downloads that exact artifact, validates its game files, and deploys it to the same GitHub Pages URL. Asset URLs receive a unique deployment-run query so browsers fetch the latest files after each publish.
 
-The approved playtest package is also published as a GitHub Release with its ZIP, mesh statistics, changelog, and preview renders.
+The approved playtest package is also published as a [Build 016 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-016-v52-conifer-forest) with its ZIP, mesh statistics, changelog, and preview renders.
 
 ## Local play
 
