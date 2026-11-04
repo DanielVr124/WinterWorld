@@ -1,0 +1,141 @@
+name: Frame complete Winter World V52 spruce
+
+on:
+  push:
+    branches:
+      - render-v52-cycles
+    paths:
+      - .github/workflows/frame-v52-fulltree.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: winterworld-v52-framed-fulltree
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out naturalized V52 source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install mesh rebuild dependencies
+        run: python -m pip install --upgrade numpy scipy trimesh
+
+      - name: Verify and extract naturalized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s render-v52-source.zip
+          unzip -t render-v52-source.zip
+          unzip -q render-v52-source.zip
+          test -s render-v52-source/v52/build_hero_spruce_v52.py
+          test -s render-v52-source/v52/render_cycles_v52.py
+
+      - name: Frame one complete-tree view at a comfortable distance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("render-v52-source/v52/render_cycles_v52.py")
+          source = path.read_text(encoding="utf-8")
+          old_camera = "full_camera = make_camera('Hero three-quarter camera', (10.5, 7.4, 14.0), (0.05, 4.05, -0.05), 46.0)"
+          new_camera = "full_camera = make_camera('Whole spruce | medium-distance three-quarter', (7.0, 5.8, 9.0), (0.0, 4.15, 0.0), 40.0)"
+          if old_camera not in source:
+              raise SystemExit("Expected original full-tree camera was not found; refusing to guess.")
+          source = source.replace(old_camera, new_camera, 1)
+
+          old_render = "render_to(scene, full_camera, 'V52_Cycles_FullTree_ThreeQuarter.png', 48, 1600, 1900)"
+          new_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_Framed.png', 48, 1600, 1900)
+          bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_Framed.blend'))
+          print('FRAMED_FULL_TREE_RENDER_COMPLETE', flush=True)"""
+          if old_render not in source:
+              raise SystemExit("Expected first full-tree render call was not found; refusing to guess.")
+          source = source.replace(old_render, new_render, 1)
+          # Stop after the single framed full-tree view; the user asked to inspect the whole tree.
+          stop_marker = "render_to(scene, back_camera,"
+          if stop_marker not in source:
+              raise SystemExit("Could not locate secondary-view section.")
+          source = source[:source.index(stop_marker)]
+          compile(source, str(path), "exec")
+          path.write_text(source, encoding="utf-8")
+          print("Camera updated: closer three-quarter view, full tree, breathing room; one preview only.")
+          PY
+
+      - name: Rebuild V47 and naturalized V52 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -u render-v52-source/base/build_hero_spruce_v47.py | tee v47-build.log
+          WINTERWORLD_V47_BASE="$GITHUB_WORKSPACE/render-v52-source/base" \
+            python -u render-v52-source/v52/build_hero_spruce_v52.py | tee v52-build.log
+
+      - name: Download verified Blender 5.2.3 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://download.blender.org/release/Blender5.2"
+          curl --fail --location --retry 4 --retry-delay 3 \
+            "$URL/blender-5.2.3-linux-x64.tar.xz" \
+            --output "$RUNNER_TEMP/blender-5.2.3-linux-x64.tar.xz"
+          curl --fail --location --retry 4 --retry-delay 3 \
+            "$URL/blender-5.2.3.sha256" \
+            --output "$RUNNER_TEMP/blender-5.2.3.sha256"
+          grep "blender-5.2.3-linux-x64.tar.xz" "$RUNNER_TEMP/blender-5.2.3.sha256" \
+            | sed "s|  blender-5.2.3-linux-x64.tar.xz|  $RUNNER_TEMP/blender-5.2.3-linux-x64.tar.xz|" \
+            | sha256sum --check -
+          tar -xJf "$RUNNER_TEMP/blender-5.2.3-linux-x64.tar.xz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/blender-5.2.3-linux-x64/blender" --version
+
+      - name: Render framed full tree with Cycles
+        working-directory: render-v52-source/v52
+        shell: bash
+        run: |
+          set -o pipefail
+          "$RUNNER_TEMP/blender-5.2.3-linux-x64/blender" \
+            --background --factory-startup \
+            --python render_cycles_v52.py \
+            --python-exit-code 1 2>&1 | tee "$GITHUB_WORKSPACE/framed-render.log"
+
+      - name: Save framed camera settings in source ZIP
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -f render-v52-source.zip
+          zip -qr render-v52-source.zip \
+            render-v52-source/base/build_hero_spruce_v47.py \
+            render-v52-source/v52/build_hero_spruce_v52.py \
+            render-v52-source/v52/render_cycles_v52.py \
+            render-v52-source/README.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add render-v52-source.zip
+          git commit -m "Adjust V52 full-tree camera framing"
+          git push origin HEAD:render-v52-cycles
+
+      - name: Upload framed preview and native scene
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-V52-FullTree-Framed
+          path: |
+            render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_Framed.png
+            render-v52-source/v52/Hero_Spruce_V52_Framed.blend
+            render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
+            render-v52-source/v52/Hero_Spruce_V52_Bough.glb
+            render-v52-source/v52/Hero_Spruce_V52_Stats.json
+            render-v52-source.zip
+            v47-build.log
+            v52-build.log
+            framed-render.log
+          if-no-files-found: error
+          retention-days: 14
