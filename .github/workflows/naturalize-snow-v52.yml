@@ -1,0 +1,229 @@
+name: Naturalize V52 spruce snow and render
+
+on:
+  push:
+    branches:
+      - render-v52-cycles
+    paths:
+      - .github/workflows/naturalize-snow-v52.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  natural-snow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out render branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install geometry dependencies
+        run: python -m pip install --upgrade numpy scipy trimesh
+
+      - name: Extract V52 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -t render-v52-source.zip
+          unzip -q render-v52-source.zip
+          test -s render-v52-source/base/build_hero_spruce_v47.py
+          test -s render-v52-source/v52/build_hero_spruce_v52.py
+          test -s render-v52-source/v52/render_cycles_v52.py
+
+      - name: Replace segmented snow caps with natural continuous mantles
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("render-v52-source/v52/build_hero_spruce_v52.py")
+          source = path.read_text(encoding="utf-8")
+
+          replacements = [
+          ("""        cross=np.linspace(-1.0,1.0,13,dtype=float)""",
+           """        cross=np.linspace(-1.0,1.0,21,dtype=float)"""),
+          ("""        station_noise=rng.uniform(-.060,.060,segments+1)""",
+           """        station_noise=rng.uniform(-.105,.105,segments+1)"""),
+          ("""            edge_wave=(.90+.070*np.sin(u*math.tau*2.4+phase)
+                       +.050*np.sin(u*math.tau*6.2-phase*.6)+station_noise[i])""",
+           """            edge_wave=(.92+.085*np.sin(u*math.tau*1.7+phase)
+                       +.060*np.sin(u*math.tau*4.3-phase*.6)+station_noise[i])"""),
+          ("""                    if local.random() < .98:
+                          twig_caps=((.10,.42),(.50,.88))
+                          for cap_i,(cap_a,cap_b) in enumerate(twig_caps):
+                              if local.random() < (.92 if cap_i==0 else .78):
+                                  snow.add_snow_ribbon([root,mid,tip],
+                                      half_width=local.uniform(.042,.050)*(1-.20*t),
+                                      thickness=local.uniform(.022,.027)*(1-.12*t),
+                                      lift=.039*(1-.12*t),
+                                      seed=branch_seed+4200+j*29+side_sign*7+cap_i,
+                                      segments=11,start=cap_a,end=cap_b)""",
+           """                    # One connected snow mantle follows each secondary twig.
+                      # Fewer, longer deposits avoid the repeated "placed cap" look.
+                      if local.random() < .82:
+                          snow.add_snow_ribbon([root,mid,tip],
+                              half_width=local.uniform(.038,.047)*(1-.20*t),
+                              thickness=local.uniform(.018,.024)*(1-.12*t),
+                              lift=.035*(1-.12*t),
+                              seed=branch_seed+4200+j*29+side_sign*7,
+                              segments=20,start=.045,end=.975)"""),
+          ("""                            if local.random() < .66:
+                                  snow.add_snow_ribbon([fork_root,fm,ft],
+                                      half_width=.019*(1-.20*t), thickness=.0115,
+                                      lift=.020, seed=branch_seed+5100+j*31,
+                                      segments=9, start=.22, end=.90)""",
+           """                            if local.random() < .34:
+                                  snow.add_snow_ribbon([fork_root,fm,ft],
+                                      half_width=.015*(1-.20*t), thickness=.0085,
+                                      lift=.016, seed=branch_seed+5100+j*31,
+                                      segments=12, start=.14, end=.96)"""),
+          ("""                    if di in (0,1,2) and local.random() < .985:
+                          fan_caps=((.12,.43),(.52,.88))
+                          for cap_i,(cap_a,cap_b) in enumerate(fan_caps):
+                              if local.random() < (.88 if cap_i==0 else .72):
+                                  snow.add_snow_ribbon([root,smid,stip],
+                                      half_width=local.uniform(.050,.058)*(1-.20*t),
+                                      thickness=local.uniform(.022,.027),
+                                      lift=.034, seed=branch_seed+5300+si*13+di*3+cap_i,
+                                      segments=11,start=cap_a,end=cap_b)""",
+           """                    if di in (0,1,2) and local.random() < .76:
+                          # A single, feather-edged mantle runs along the whole fan.
+                          snow.add_snow_ribbon([root,smid,stip],
+                              half_width=local.uniform(.041,.052)*(1-.20*t),
+                              thickness=local.uniform(.018,.024),
+                              lift=.030, seed=branch_seed+5300+si*13+di*3,
+                              segments=20,start=.055,end=.965)"""),
+          ("""            # Individually settled snow strips follow the primary bough's changing
+                      # direction. Small gaps and tapered ends keep the result natural rather
+                      # than a row of separate, rounded copy-pasted blobs.
+                      snow_chance=.99 if detail=='hero' else .97
+                      if local.random()<snow_chance:
+                          # Six separate caps carry more total snow, but each one remains
+                          # a compact, individually tapered deposit that follows the bough.
+                          intervals=[(.025,.135),(.150,.260),(.275,.385),(.400,.510),(.525,.635),(.650,.760),(.775,.885),(.900,.985)]
+                          for q,(a,b) in enumerate(intervals):
+                              jitter=local.uniform(-.018,.018)
+                              a=max(.025,a+jitter); b=min(.99,b+jitter*.70)
+                              snow.add_snow_ribbon([p0,p1,p2,p3],
+                                  half_width=local.uniform(.068,.082)*(1-t*.28),
+                                  thickness=local.uniform(.038,.047)*(1-t*.14),
+                                  lift=local.uniform(.064,.078)*(1-t*.12),
+                                  seed=branch_seed+800+q,segments=17,start=a,end=b)""",
+           """            # One long, naturally irregular mantle follows the primary bough.
+                      # It tapers only near the branch base and tip; it is not split into
+                      # repeated short caps, so the snow reads as a connected drift.
+                      snow_chance=.96 if detail=='hero' else .90
+                      if local.random()<snow_chance:
+                          snow.add_snow_ribbon([p0,p1,p2,p3],
+                              half_width=local.uniform(.062,.076)*(1-t*.28),
+                              thickness=local.uniform(.034,.043)*(1-t*.14),
+                              lift=local.uniform(.056,.070)*(1-t*.12),
+                              seed=branch_seed+800,segments=34,start=.015,end=.99)"""),
+          ("""                if side in (-1,1) and di in (0,2) and rng.random()<.70:
+                      snow.add_snow_ribbon([fork_root,fm,ft],.018,.011,.020,
+                          seed+2700+j*19+di*11,segments=6,start=.20,end=.88)""",
+           """                if side in (-1,1) and di in (0,2) and rng.random()<.34:
+                      snow.add_snow_ribbon([fork_root,fm,ft],.014,.0085,.016,
+                          seed+2700+j*19+di*11,segments=10,start=.14,end=.96)"""),
+          ("""    # Several individually tapered snow mantles track the curvature of the
+              # main bough; short gaps expose needles and prevent overhanging clumps.
+              for j,(a,b) in enumerate(((.025,.135),(.150,.260),(.275,.385),(.400,.510),(.525,.635),(.650,.760),(.775,.885),(.900,.985))):
+                  snow.add_snow_ribbon(pts,.068,.042,.068,seed+800+j,
+                                       segments=17,start=a,end=b)""",
+           """    # A single connected snow mantle follows the full main bough.
+              # The irregular feathered margins leave needles visible at the sides.
+              snow.add_snow_ribbon(pts,.066,.039,.064,seed+800,
+                                   segments=36,start=.015,end=.99)"""),
+          ("""    stats['notes']="V52: preserves V47's approved silhouette and detailed individual-needle geometry, keeps individually tapered snow mantles in contact with the upper needle canopy, using shorter, rounded deposits and increased total coverage using short, independently tapered caps on primary boughs, upper-facing branchlet fans, secondary twigs and tertiary forklets; keeps the rounded sculpted snow surfaces, subtle lower-bough sag/hue variation, and a Blender PBR material pass with fine snow/bark/needle roughness. No detached snow blobs are emitted." """.rstrip(),
+           """    stats['notes']="V52 natural-snow pass: preserves the approved V47 branch silhouette and individual-needle detail, but replaces repeated short snow caps with longer, connected, feather-edged mantles following primary boughs and secondary fans. Smaller tertiary deposits are less frequent and thinner, with broader low-frequency edge drift and a smoother rounded cross-section. Subtle lower-bough sag, needle hue variation, and the Blender PBR material pass are retained. No detached snow blobs are emitted." """.rstrip())
+          ]
+
+          for index, (old, new) in enumerate(replacements, 1):
+              if old not in source:
+                  raise SystemExit(f"Patch {index} did not match the expected source; stopping without changing the file.")
+              source = source.replace(old, new, 1)
+
+          if "intervals=[(.025,.135)" in source or "twig_caps=((.10,.42)" in source or "fan_caps=((.12,.43)" in source:
+              raise SystemExit("Old segmented snow-cap logic remains; refusing to build.")
+
+          compile(source, str(path), "exec")
+          path.write_text(source, encoding="utf-8")
+          print(f"Applied {len(replacements)} snow naturalization patches.")
+          PY
+
+      - name: Rebuild V47 and V52 geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -u render-v52-source/base/build_hero_spruce_v47.py | tee v47-build.log
+          WINTERWORLD_V47_BASE="$GITHUB_WORKSPACE/render-v52-source/base" \
+            python -u render-v52-source/v52/build_hero_spruce_v52.py | tee v52-build.log
+
+      - name: Download official Blender 5.2.3 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://download.blender.org/release/Blender5.2"
+          curl --fail --location --retry 4 --retry-delay 3 \
+            "$URL/blender-5.2.3-linux-x64.tar.xz" \
+            --output "$RUNNER_TEMP/blender-5.2.3-linux-x64.tar.xz"
+          curl --fail --location --retry 4 --retry-delay 3 \
+            "$URL/blender-5.2.3.sha256" \
+            --output "$RUNNER_TEMP/blender-5.2.3.sha256"
+          grep "blender-5.2.3-linux-x64.tar.xz" "$RUNNER_TEMP/blender-5.2.3.sha256" \
+            | sed "s|  blender-5.2.3-linux-x64.tar.xz|  $RUNNER_TEMP/blender-5.2.3-linux-x64.tar.xz|" \
+            | sha256sum --check -
+          tar -xJf "$RUNNER_TEMP/blender-5.2.3-linux-x64.tar.xz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/blender-5.2.3-linux-x64/blender" --version
+
+      - name: Render naturalized snow with Cycles CPU
+        working-directory: render-v52-source/v52
+        shell: bash
+        run: |
+          set -o pipefail
+          "$RUNNER_TEMP/blender-5.2.3-linux-x64/blender" \
+            --background --factory-startup \
+            --python render_cycles_v52.py \
+            --python-exit-code 1 2>&1 | tee "$GITHUB_WORKSPACE/cycles-render.log"
+
+      - name: Save revised source ZIP back to render branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          rm -f render-v52-source.zip
+          zip -qr render-v52-source.zip render-v52-source/base/build_hero_spruce_v47.py \
+            render-v52-source/v52/build_hero_spruce_v52.py \
+            render-v52-source/v52/render_cycles_v52.py \
+            render-v52-source/README.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add render-v52-source.zip
+          git commit -m "Naturalize V52 branch snow mantles"
+          git push origin HEAD:render-v52-cycles
+
+      - name: Upload naturalized Cycles renders and revised assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-V52-Natural-Snow-Cycles
+          path: |
+            render-v52-source/v52/cycles_renders/
+            render-v52-source/v52/Hero_Spruce_V52_Cycles.blend
+            render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
+            render-v52-source/v52/Hero_Spruce_V52_Bough.glb
+            render-v52-source/v52/Hero_Spruce_V52_Stats.json
+            cycles-render.log
+            v47-build.log
+            v52-build.log
+            render-v52-source.zip
+          if-no-files-found: error
+          retention-days: 14
