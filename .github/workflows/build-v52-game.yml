@@ -108,7 +108,7 @@ jobs:
           console.log(JSON.stringify({vertices:d.vertexCount,triangles:d.triangleCount,maxIndex:max,vertexBytes:vertices.length,indexBytes:indices.length}));
           JS
           cd ../..
-          zip -qr -9 WinterWorld_Playtest_Build015_V52.zip WinterWorld_Prototype
+          cd work && zip -qr -9 ../WinterWorld_Playtest_Build015_V52.zip WinterWorld_Prototype && cd ..
           unzip -tq WinterWorld_Playtest_Build015_V52.zip
           ls -lh WinterWorld_Playtest_Build015_V52.zip work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
 
