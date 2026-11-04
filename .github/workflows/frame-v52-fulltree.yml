@@ -50,52 +50,64 @@ jobs:
           path = Path("render-v52-source/v52/build_hero_spruce_v52.py")
           s = path.read_text(encoding="utf-8")
 
-          def replace_once(old, new, label):
-              global s
-              if old not in s:
-                  raise SystemExit(f"Missing exact source marker: {label}")
-              s = s.replace(old, new, 1)
+          # Replace the root section by its bounds, so this patch is safe both on
+          # the original V52 source and on a source ZIP containing an earlier polish.
+          root_candidates = [
+              s.find("    # Slightly exposed root flares"),
+              s.find("    # Exposed root flares form"),
+          ]
+          root_candidates = [i for i in root_candidates if i >= 0]
+          if not root_candidates:
+              raise SystemExit("Could not find the V52 root-flare section.")
+          root_start = min(root_candidates)
+          root_end = s.index("    whorl_data=[]", root_start)
 
-          replace_once(
-              """    # Slightly exposed root flares at the trunk base.
-              for k in range(6):
-                  a=k*math.tau/6+rng.uniform(-.18,.18)
-                  dx,dz=math.cos(a),math.sin(a)
-                  root_len=rng.uniform(.42,.66)
-                  root=[np.array([0,.12,0]),np.array([dx*root_len*.48,.05,dz*root_len*.48]),np.array([dx*root_len,-.025,dz*root_len])]
-                  trunk.add_tube(root,[.105,.053,.007],'bark',7,seed+80+k,ridged=.10)
-          """,
-              """    # Exposed root flares form a grounded, irregular root crown rather than
-              # stopping short above the forest floor. Eight varied buttress roots blend
-              # into the trunk and taper to fine tips at ground contact.
-              for k in range(8):
-                  a=k*math.tau/8+rng.uniform(-.16,.16)
-                  dx,dz=math.cos(a),math.sin(a)
-                  root_len=rng.uniform(.48,.72)
-                  root=[np.array([0,.14,0]),
-                        np.array([dx*root_len*.48,.025,dz*root_len*.48]),
-                        np.array([dx*root_len,-.098,dz*root_len])]
-                  trunk.add_tube(root,[.118,.061,.0075],'bark',8,seed+80+k,ridged=.10)
-          """,
-              "root flare block")
+          # Keep exactly six root-flare RNG calls, matching the original generator's
+          # random-call count. This prevents unrelated branch/needle variation from
+          # shifting while the root geometry itself is refined.
+          new_root = "\\n".join([
+              "    # Six exposed root flares blend into the trunk and reach the forest floor.",
+              "    for k in range(6):",
+              "        a=k*math.tau/6+rng.uniform(-.16,.16)",
+              "        dx,dz=math.cos(a),math.sin(a)",
+              "        root_len=rng.uniform(.48,.72)",
+              "        root=[np.array([0,.14,0]),",
+              "              np.array([dx*root_len*.48,.025,dz*root_len*.48]),",
+              "              np.array([dx*root_len,-.098,dz*root_len])]",
+              "        trunk.add_tube(root,[.118,.061,.0075],'bark',8,seed+80+k,ridged=.10)",
+              "",
+          ]) + "\\n"
+          s = s[:root_start] + new_root + s[root_end:]
 
-          replace_once(
-              """            boughs.add_tube([p0,p1,p2,p3],[base_r,base_r*.70,base_r*.39,.0065],'twig',8,branch_seed,ridged=.025)""",
-              """            # Gentle basal swelling gives the primary bough a more convincing
-                      # collar where it emerges from the trunk; the taper remains gradual.
-                      boughs.add_tube([p0,p1,p2,p3],
-                                      [base_r*1.28,base_r*.84,base_r*.39,.0065],
-                                      'twig',10,branch_seed,ridged=.022)""",
-              "primary bough collar")
+          old_bough = "            boughs.add_tube([p0,p1,p2,p3],[base_r,base_r*.70,base_r*.39,.0065],'twig',8,branch_seed,ridged=.025)"
+          new_bough = "\\n".join([
+              "            # Gentle basal swelling gives the primary bough a more convincing",
+              "            # collar where it emerges from the trunk; the taper remains gradual.",
+              "            boughs.add_tube([p0,p1,p2,p3],",
+              "                            [base_r*1.28,base_r*.84,base_r*.39,.0065],",
+              "                            'twig',10,branch_seed,ridged=.022)",
+          ])
+          if old_bough in s:
+              s = s.replace(old_bough, new_bough, 1)
+          elif "Gentle basal swelling gives the primary bough" not in s or "[base_r*1.28,base_r*.84" not in s:
+              raise SystemExit("Neither baseline nor polished primary-bough collar was found.")
 
-          replace_once(
-              """    stats['notes']='V52 natural-snow pass: preserves the approved V47 branch silhouette and individual-needle detail, but replaces repeated short snow caps with longer, connected, feather-edged mantles following primary boughs and secondary fans. Smaller tertiary deposits are less frequent and thinner, with broader low-frequency edge drift and a smoother rounded cross-section. Subtle lower-bough sag, needle hue variation, and the Blender PBR material pass are retained. No detached snow blobs are emitted.'""",
-              """    stats['notes']='V52 final polish: preserves the approved crown silhouette, individual-needle detail and connected feather-edged snow mantles. Primary bough roots receive a restrained basal collar, and the eight varied root flares now reach the forest floor. Branch reach, crown proportions, snow coverage and needle distribution remain unchanged. No detached snow blobs are emitted.'""",
-              "final build notes")
+          note = ("V52 final polish: preserves the approved crown silhouette, branch reach, "
+                  "individual-needle detail and connected feather-edged snow mantles. "
+                  "Primary bough roots receive a restrained basal collar, and six varied "
+                  "root flares reach the forest floor. The root patch preserves the original "
+                  "procedural random-call count so unrelated branch and needle variation "
+                  "does not shift. No detached snow blobs are emitted.")
+          lines = s.splitlines()
+          note_lines = [i for i, line in enumerate(lines) if "stats['notes']=" in line]
+          if len(note_lines) != 1:
+              raise SystemExit("Could not uniquely locate the V52 stats note.")
+          lines[note_lines[0]] = "    stats['notes']=" + repr(note)
+          s = "\\n".join(lines) + "\\n"
 
           compile(s, str(path), "exec")
           path.write_text(s, encoding="utf-8")
-          print("Final geometry polish applied; source syntax check passed.")
+          print("Final geometry patch applied with stable procedural RNG sequence; syntax check passed.")
           PY
 
       - name: Correct Blender Z-up scene framing for the whole tree
