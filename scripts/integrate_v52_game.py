@@ -175,10 +175,6 @@ main = replace_once(main,
     "  const camera={x:0,y:terrainHeight(0,18)+WALK_EYE_HEIGHT,z:18,yaw:Math.PI,pitch:0};\n  rebuildSceneBatches(true);",
     "initial distance LOD batch")
 main = replace_once(main,"last=now;update(dt);frameCount++;","last=now;update(dt);rebuildSceneBatches();frameCount++;","per-frame distance LOD refresh")
-main = replace_once(main,
-    "V52 forest spruce LOD: ${forestSpruceV52TriangleCount.toLocaleString()} tris/instance\nSakura body:",
-    "V52 forest medium LOD: ${forestSpruceV52TriangleCount.toLocaleString()} tris/instance\nV52 forest far LOD: ${forestLowSpruceV52TriangleCount.toLocaleString()} tris/instance\nV52 LOD counts: near ${sceneLodCounts.hero}, mid ${sceneLodCounts.medium}, far ${sceneLodCounts.far}\nSakura body:",
-    "distance LOD diagnostics")
 
 marker = "  // First Japanese cherry-blossom grove: broad natural crowns, dark branching,"
 hero_object = """  // One full-detail V52 hero spruce anchors the near path. The other conifers
@@ -214,7 +210,9 @@ old_diag = "Scene instances: " + dollar + "{sceneInstanceCount}\nSakura body:"
 new_diag = (
     "Scene instances: " + dollar + "{sceneInstanceCount}\n"
     "V52 hero spruce: " + dollar + "{heroSpruceV52TriangleCount.toLocaleString()} tris\n"
-    "V52 forest spruce LOD: " + dollar + "{forestSpruceV52TriangleCount.toLocaleString()} tris/instance\n"
+    "V52 forest medium LOD: " + dollar + "{forestSpruceV52TriangleCount.toLocaleString()} tris/instance\n"
+    "V52 forest far LOD: " + dollar + "{forestLowSpruceV52TriangleCount.toLocaleString()} tris/instance\n"
+    "V52 LOD counts: near " + dollar + "{sceneLodCounts.hero}, mid " + dollar + "{sceneLodCounts.medium}, far " + dollar + "{sceneLodCounts.far}\n"
     "Sakura body:"
 )
 main = replace_once(main, old_diag, new_diag, "hero performance diagnostics")
