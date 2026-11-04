@@ -1,4 +1,4 @@
-name: Build Winter World 017 with intact V52 forest LODs
+name: Build Winter World 018 with fuller V52 conifer detail
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: winterworld-build016-v52-final
+  group: winterworld-build018-v52-fuller-forest
   cancel-in-progress: true
 
 jobs:
@@ -68,7 +68,7 @@ jobs:
           V52_OUTPUT_HERO_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_data.js
           V52_OUTPUT_FOREST_JS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
           V52_OUTPUT_STATS: ${{ github.workspace }}/work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
-          V52_OUTPUT_PREVIEW: ${{ github.workspace }}/V52_Build017_Hero_vs_ForestLOD.png
+          V52_OUTPUT_PREVIEW: ${{ github.workspace }}/V52_Build018_Hero_vs_ForestLOD.png
         run: |
           set -euo pipefail
           "${RUNNER_TEMP}/blender-5.2.3-linux-x64/blender" \
@@ -81,7 +81,7 @@ jobs:
           set -euo pipefail
           python scripts/integrate_v52_game.py work/WinterWorld_Prototype
 
-      - name: Write Build 017 documentation and test context
+      - name: Write Build 018 documentation and test context
         shell: bash
         run: |
           set -euo pipefail
@@ -91,11 +91,11 @@ jobs:
           game = Path("work/WinterWorld_Prototype")
           index = game / "index.html"
           html = index.read_text(encoding="utf-8")
-          html = html.replace("Development Build 016", "Development Build 017")
+          html = html.replace("Development Build 016", "Development Build 018")
           html = html.replace("DEVELOPMENT BUILD 016 · M2", "DEVELOPMENT BUILD 017 · M2")
           html = html.replace(
               "Final V52 spruce across the entire conifer forest · Build 016",
-              "Intact snow and needle islands in every repeated V52 forest tree · Build 017"
+              "Intact snow and needle islands in every repeated V52 forest tree · Build 018"
           )
           html = html.replace(
               "M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD",
@@ -103,7 +103,7 @@ jobs:
           )
           index.write_text(html, encoding="utf-8")
 
-          changelog = """# Build 017 — Shape-Preserving V52 Forest LOD Repair
+          changelog = """# Build 018 — Fuller V52 Forest Detail Repair
 
           ## Fixed
           - Removed random per-face deletion that had fragmented snow patches and individual needles in repeated forest trees.
@@ -123,11 +123,11 @@ jobs:
           - A Blender render compares the actual exported hero and forest LOD meshes.
           - In-browser visual review and target-PC FPS remain pending user testing.
           """
-          (game / "BUILD_017_CHANGELOG.md").write_text(changelog, encoding="utf-8")
+          (game / "BUILD_018_CHANGELOG.md").write_text(changelog, encoding="utf-8")
 
-          readme = """# Winter World — Development Build 017
+          readme = """# Winter World — Development Build 018
 
-          A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 017 repairs the repeated V52 forest LOD by preserving complete snow patches and needle islands instead of randomly cutting their faces. The near-path showcase remains the high-detail V52 hero tree.
+          A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 018 repairs the repeated V52 forest LOD by preserving complete snow patches and needle islands instead of randomly cutting their faces. The near-path showcase remains the high-detail V52 hero tree.
 
           ## Run the world
           1. Extract the ZIP.
@@ -146,7 +146,7 @@ jobs:
           - E: development note
           - F3: performance and player diagnostics
 
-          ## Build 017 — V52 Forest LOD Repair
+          ## Build 018 — V52 Forest LOD Repair
           - Preserves whole connected snow and needle islands in repeated V52 trees.
           - Increases bough detail in the shared forest LOD.
           - Retains the high-detail hero and the same V52 source for all other conifers.
@@ -162,12 +162,12 @@ jobs:
           - **Current milestone:** M2 — Quality Benchmark
           - **Current sub-pass:** Shape-preserving V52 forest LOD repair
           - **Build 016 issue:** The repeated forest LOD was reduced by randomly deleting individual faces from dense snow and needle meshes. This fragmented the authored surfaces and caused non-hero trees to look broken.
-          - **Build 017 fix:** Complete connected snow and needle islands are sampled as units. The forest LOD retains intact authored pieces while remaining lighter than the full hero mesh.
+          - **Build 018 fix:** Complete connected snow and needle islands are sampled as units. The forest LOD retains intact authored pieces while remaining lighter than the full hero mesh.
 
-          ## Build 017 — Implemented
+          ## Build 018 — Implemented
           - V52 Z-up to WebGL Y-up conversion and y=0 root normalization retained.
           - Every conifer still uses the V52 source asset.
-          - Snow and needle geometry uses deterministic whole-island sampling, not random face deletion.
+          - Snow and needle geometry uses deterministic higher-density whole-island sampling, not random face deletion.
           - Added geometry QA, a test report, and an actual Blender LOD comparison render.
 
           ## Pending
@@ -210,7 +210,7 @@ jobs:
           }
 
           const hero = validateMesh('src/hero_spruce_v52_data.js', 'WinterWorldHeroSpruceV52Data', 180000, 900000);
-          const forest = validateMesh('src/forest_spruce_v52_data.js', 'WinterWorldForestSpruceV52Data', 35000, 100000);
+          const forest = validateMesh('src/forest_spruce_v52_data.js', 'WinterWorldForestSpruceV52Data', 150000, 190000);
           const stats = JSON.parse(fs.readFileSync('src/hero_spruce_v52_stats.json', 'utf8'));
           for (const lod of [stats.hero_lod, stats.forest_lod]) {
             if (!lod || lod.coordinate_conversion.position_and_normal_mapping !== '(x, y, z) -> (x, z, -y)') throw new Error('V52 axis conversion metadata missing');
@@ -219,9 +219,9 @@ jobs:
           }
           for (const name of ['Spruce_Settled_Snow_Patches','Spruce_Individual_Needles']) {
             const sampling = stats.forest_lod.components[name]?.island_sampling;
-            if (!sampling || sampling.method !== 'deterministic_whole_connected_islands') throw new Error(name + ' is not using intact-island sampling');
+            if (!sampling || sampling.method !== 'deterministic_whole_connected_islands') throw new Error(name + ' is not using higher-density intact-island sampling');
             if (!sampling.retained_islands || sampling.retained_islands < 1) throw new Error(name + ' retained no complete islands');
-            if (sampling.actual_face_percent < 2 || sampling.actual_face_percent > 9) throw new Error(name + ' island sample is outside the quality budget');
+            if (sampling.actual_face_percent < 14 || sampling.actual_face_percent > 21) throw new Error(name + ' island sample is outside the quality budget');
           }
           const html = fs.readFileSync('index.html', 'utf8');
           for (const file of ['src/hero_spruce_v52_data.js','src/forest_spruce_v52_data.js']) {
@@ -231,7 +231,7 @@ jobs:
           if (main.includes('mesh:firSpecies[') || main.includes('add(pineCone')) throw new Error('Legacy conifer placement remains');
           if (!main.includes('mesh:forestSpruceV52Mesh')) throw new Error('V52 forest mesh not used for conifer placement');
           const qa = {
-            build: '017',
+            build: '018',
             source: 'V52 Cycles spruce',
             automated_tests: [
               {name:'Hero and forest WebGL mesh buffers',status:'PASS',details:'Buffer lengths, finite attributes, valid indices, and triangle budgets'},
@@ -249,21 +249,21 @@ jobs:
               {name:'Target-PC frame-rate check',status:'PENDING_USER_REVIEW'},
             ]
           };
-          fs.writeFileSync('../../BUILD_017_TEST_REPORT.json', JSON.stringify(qa,null,2));
+          fs.writeFileSync('../../BUILD_018_TEST_REPORT.json', JSON.stringify(qa,null,2));
           console.log(JSON.stringify({hero,forest,coordinateConversion:stats.coordinate_conversion},null,2));
           JS
           cd ../..
-          cd work && zip -qr -9 ../WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip WinterWorld_Prototype && cd ..
-          unzip -tq WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip
+          cd work && zip -qr -9 ../WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip WinterWorld_Prototype && cd ..
+          unzip -tq WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip
           python - <<'PY'
           import json
           from pathlib import Path
-          report_path = Path('BUILD_017_TEST_REPORT.json')
+          report_path = Path('BUILD_018_TEST_REPORT.json')
           report = json.loads(report_path.read_text(encoding='utf-8'))
           report['automated_tests'].append({'name': 'Playable ZIP integrity', 'status': 'PASS', 'details': 'unzip -t completed without errors'})
           report_path.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
           lines = [
-              '# Build 017 — Automated Test Report',
+              '# Build 018 — Automated Test Report',
               '',
               '## Automated checks',
               '',
@@ -282,23 +282,23 @@ jobs:
               '- **Pending user review:** actual appearance in the live browser on the user\'s display.',
               '- **Pending user review:** frame rate on the target PC. CI geometry and syntax checks do not establish target-hardware FPS.',
               '', '## Blender preview', '',
-              'The attached `V52_Build017_Hero_vs_ForestLOD.png` is rendered from the actual exported buffers for the hero and repeated forest LOD.',
+              'The attached `V52_Build018_Hero_vs_ForestLOD.png` is rendered from the actual exported buffers for the hero and repeated forest LOD.',
           ]
-          Path('BUILD_017_TEST_REPORT.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          Path('BUILD_018_TEST_REPORT.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
-          ls -lh WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip BUILD_017_TEST_REPORT.md BUILD_017_TEST_REPORT.json V52_Build017_Hero_vs_ForestLOD.png work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
+          ls -lh WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip BUILD_018_TEST_REPORT.md BUILD_018_TEST_REPORT.json V52_Build018_Hero_vs_ForestLOD.png work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
 
-      - name: Upload Build 017 repair build, reports, and renders
+      - name: Upload Build 018 repair build, reports, and renders
         uses: actions/upload-artifact@v4
         with:
-          name: WinterWorld-Build017-V52-ForestLODRepair
+          name: WinterWorld-Build018-V52-FullerConiferForest
           path: |
-            WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip
+            WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip
             work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
-            work/WinterWorld_Prototype/BUILD_017_CHANGELOG.md
-            BUILD_017_TEST_REPORT.md
-            BUILD_017_TEST_REPORT.json
-            V52_Build017_Hero_vs_ForestLOD.png
+            work/WinterWorld_Prototype/BUILD_018_CHANGELOG.md
+            BUILD_018_TEST_REPORT.md
+            BUILD_018_TEST_REPORT.json
+            V52_Build018_Hero_vs_ForestLOD.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_Bough_SnowContact_Closeup.png
           if-no-files-found: error
