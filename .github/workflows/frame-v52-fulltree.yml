@@ -41,7 +41,7 @@ jobs:
           test -s render-v52-source/v52/build_hero_spruce_v52.py
           test -s render-v52-source/v52/render_cycles_v52.py
 
-      - name: Polish primary branch collars and ground-contact root crown
+      - name: Seal branch-to-snow contact across every bough tier
         shell: bash
         run: |
           python - <<'PY'
@@ -50,21 +50,17 @@ jobs:
           path = Path("render-v52-source/v52/build_hero_spruce_v52.py")
           s = path.read_text(encoding="utf-8")
 
-          # Replace the root section by its bounds, so this patch is safe both on
-          # the original V52 source and on a source ZIP containing an earlier polish.
+          # Keep the approved six-root crown and primary collar polish reproducible.
           root_candidates = [
               s.find("    # Slightly exposed root flares"),
               s.find("    # Exposed root flares form"),
+              s.find("    # Six exposed root flares blend"),
           ]
           root_candidates = [i for i in root_candidates if i >= 0]
           if not root_candidates:
               raise SystemExit("Could not find the V52 root-flare section.")
           root_start = min(root_candidates)
           root_end = s.index("    whorl_data=[]", root_start)
-
-          # Keep exactly six root-flare RNG calls, matching the original generator's
-          # random-call count. This prevents unrelated branch/needle variation from
-          # shifting while the root geometry itself is refined.
           new_root = "\n".join([
               "    # Six exposed root flares blend into the trunk and reach the forest floor.",
               "    for k in range(6):",
@@ -92,12 +88,78 @@ jobs:
           elif "Gentle basal swelling gives the primary bough" not in s or "[base_r*1.28,base_r*.84" not in s:
               raise SystemExit("Neither baseline nor polished primary-bough collar was found.")
 
-          note = ("V52 final polish: preserves the approved crown silhouette, branch reach, "
-                  "individual-needle detail and connected feather-edged snow mantles. "
-                  "Primary bough roots receive a restrained basal collar, and six varied "
-                  "root flares reach the forest floor. The root patch preserves the original "
-                  "procedural random-call count so unrelated branch and needle variation "
-                  "does not shift. No detached snow blobs are emitted.")
+          def replace_once(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f"Missing source marker: {label}")
+              s = s.replace(old, new, 1)
+
+          old_sig = "    def add_snow_ribbon(self, points, half_width, thickness, lift, seed,\n                        segments=20, start=0.0, end=1.0):"
+          new_sig = "    def add_snow_ribbon(self, points, half_width, thickness, lift, seed,\n                        segments=20, start=0.0, end=1.0, support_radii=None):"
+          if old_sig in s:
+              s = s.replace(old_sig, new_sig, 1)
+          elif new_sig not in s:
+              raise SystemExit("Could not identify add_snow_ribbon signature.")
+
+          pts_line = "        pts=[np.asarray(p,dtype=float) for p in points]"
+          radii_lines = "\n".join([
+              pts_line,
+              "        radius_values=np.asarray(support_radii,dtype=float) if support_radii is not None else None",
+              "        if radius_values is not None and (radius_values.shape != (len(pts),) or np.any(radius_values <= 0)):",
+              "            raise ValueError('support_radii must contain one positive radius for every ribbon path point')",
+          ])
+          if pts_line in s:
+              s = s.replace(pts_line, radii_lines, 1)
+          elif "radius_values=np.asarray(support_radii" not in s:
+              raise SystemExit("Could not add the branch-radius support data.")
+
+          tangent_line = "            f=np.clip((dist-cumulative[seg])/seg_len,0.0,1.0)"
+          radius_block = "\n".join([
+              tangent_line,
+              "            support_radius=None",
+              "            if radius_values is not None:",
+              "                support_radius=float(radius_values[seg]*(1-f)+radius_values[seg+1]*f)",
+          ])
+          if tangent_line in s and "            support_radius=None" not in s:
+              s = s.replace(tangent_line, radius_block, 1)
+          elif "            support_radius=None" not in s:
+              raise SystemExit("Could not add per-segment support-radius interpolation.")
+
+          old_base = "            base_y=center[1]+lift+waviness"
+          new_base = "\n".join([
+              "            contact_lift=lift",
+              "            if support_radius is not None:",
+              "                # Embed the snow's lower edge slightly into the supporting wood.",
+              "                # Clamp micro-relief to the local radius so thin tips cannot float.",
+              "                contact_lift=min(lift,support_radius*.88)",
+              "                waviness=float(np.clip(waviness,-support_radius*.04,support_radius*.04))",
+              "            base_y=center[1]+contact_lift+waviness",
+          ])
+          if old_base in s:
+              s = s.replace(old_base, new_base, 1)
+          elif "contact_lift=min(lift,support_radius*.88)" not in s:
+              raise SystemExit("Could not find snow-ribbon base-height calculation.")
+
+          call_updates = [
+              ("segments=20,start=.045,end=.975)", "segments=20,start=.045,end=.975,support_radii=[r0,r0*.49,.0035])", "main secondary twigs"),
+              ("segments=12, start=.14, end=.96)", "segments=12, start=.14, end=.96,support_radii=[.010,.005,.0018])", "main tertiary forklets"),
+              ("segments=20,start=.055,end=.965)", "segments=20,start=.055,end=.965,support_radii=[r0,r0*.42,.0015])", "branchlet fans"),
+              ("segments=34,start=.015,end=.99)", "segments=34,start=.015,end=.99,support_radii=[base_r*1.28,base_r*.84,base_r*.39,.0065])", "primary boughs"),
+              ("seed+2500+j*17+di,segments=8,start=.12,end=.92)", "seed+2500+j*17+di,segments=8,start=.12,end=.92,support_radii=[.018,.008,.0018])", "standalone bough secondary twigs"),
+              ("seed+2700+j*19+di*11,segments=10,start=.14,end=.96)", "seed+2700+j*19+di*11,segments=10,start=.14,end=.96,support_radii=[.0045,.002,.0007])", "standalone bough forklets"),
+              ("segments=36,start=.015,end=.99)", "segments=36,start=.015,end=.99,support_radii=[.062,.048,.029,.010])", "standalone main bough"),
+          ]
+          for old, new, label in call_updates:
+              if new in s:
+                  continue
+              replace_once(old, new, label)
+
+          if s.count("support_radii=[") != 7:
+              raise SystemExit(f"Expected support radii on all 7 snow-ribbon call sites; found {s.count('support_radii=[')}")
+          if "base_y=center[1]+lift+waviness" in s:
+              raise SystemExit("Old fixed-height snow placement remains.")
+
+          note = ("V52 snow-contact polish: every primary, secondary, tertiary and standalone-bough snow mantle follows the local supporting wood radius and overlaps it slightly at the lower edge. The overlap is clamped against local branch thickness and tip micro-relief so tapered branches cannot reveal floating seams. The approved crown silhouette, snow coverage, needle distribution and procedural random sequence are preserved.")
           lines = s.splitlines()
           note_lines = [i for i, line in enumerate(lines) if "stats['notes']=" in line]
           if len(note_lines) != 1:
@@ -107,7 +169,7 @@ jobs:
 
           compile(s, str(path), "exec")
           path.write_text(s, encoding="utf-8")
-          print("Final geometry patch applied with stable procedural RNG sequence; syntax check passed.")
+          print("All seven snow mantles now use local branch radii; syntax check passed.")
           PY
 
       - name: Correct Blender Z-up scene framing for the whole tree
@@ -178,6 +240,47 @@ jobs:
 
           # The source script is already a single-view renderer.
           compile(source, str(path), "exec")
+          detail_marker = "print('FRAMED_FULL_TREE_RENDER_COMPLETE', flush=True)"
+          detail_lines = [
+              "",
+              "# Isolated close-up: inspect the branch/snow contact after the full-tree render.",
+              "clear_scene()",
+              "scene = bpy.context.scene",
+              "bpy.ops.import_scene.gltf(filepath=BOUGH_GLB)",
+              "bough_objects = [o for o in scene.objects if o.type == 'MESH']",
+              "assign_materials(bough_objects)",
+              "bounds = [obj.matrix_world @ Vector(corner) for obj in bough_objects for corner in obj.bound_box]",
+              "detail_min = Vector((min(v.x for v in bounds), min(v.y for v in bounds), min(v.z for v in bounds)))",
+              "detail_max = Vector((max(v.x for v in bounds), max(v.y for v in bounds), max(v.z for v in bounds)))",
+              "detail_center = (detail_min + detail_max) * 0.5",
+              "detail_world = bpy.data.worlds.new('Winter dusk | snow-contact close-up')",
+              "detail_world.use_nodes = True",
+              "detail_world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.035, 0.055, 0.085, 1)",
+              "detail_world.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.42",
+              "scene.world = detail_world",
+              "def detail_area(name, offset, power, color, size):",
+              "    data = bpy.data.lights.new(name, 'AREA')",
+              "    data.energy = power",
+              "    data.color = color",
+              "    data.shape = 'DISK'",
+              "    data.size = size",
+              "    obj = bpy.data.objects.new(name, data)",
+              "    scene.collection.objects.link(obj)",
+              "    obj.location = detail_center + Vector(offset)",
+              "    obj.rotation_euler = (detail_center - obj.location).to_track_quat('-Z', 'Y').to_euler()",
+              "detail_area('Close-up warm key', (2.8, -3.2, 3.2), 1450, (1.0, 0.88, 0.76), 2.4)",
+              "detail_area('Close-up cool fill', (-2.6, -1.2, 1.8), 1150, (0.70, 0.84, 1.0), 2.8)",
+              "detail_area('Close-up rim', (0.3, 3.0, 2.2), 1650, (0.78, 0.88, 1.0), 2.0)",
+              "detail_camera = make_camera('Bough snow-contact inspection', tuple(detail_center + Vector((0.15, -3.45, 1.25))), tuple(detail_center), 40.0)",
+              "render_to(scene, detail_camera, 'V52_Cycles_Bough_SnowContact_Closeup.png', 48, 1500, 1000)",
+              "bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_Bough_SnowContact_Inspection.blend'))",
+              "print('BOUGH_SNOW_CONTACT_INSPECTION_COMPLETE', flush=True)",
+          ]",
+          detail_code = "\\n".join(detail_lines)"
+          if "V52_Cycles_Bough_SnowContact_Closeup.png" not in source:
+              if detail_marker not in source:
+                  raise SystemExit("Could not find the end of the full-tree render before adding the bough inspection.")
+              source = source.replace(detail_marker, detail_marker + "\\n" + detail_code, 1)
           path.write_text(source, encoding="utf-8")
           print("Applied Z-up camera, lights and horizontal floor; full tree target is computed from Blender world bounds.")
           PY
@@ -241,6 +344,8 @@ jobs:
           name: WinterWorld-V52-Final-Polish
           path: |
             render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
+            render-v52-source/v52/cycles_renders/V52_Cycles_Bough_SnowContact_Closeup.png
+            render-v52-source/v52/Hero_Spruce_V52_Bough_SnowContact_Inspection.blend
             render-v52-source/v52/Hero_Spruce_V52_ZUpFramed_40mm.blend
             render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
             render-v52-source/v52/Hero_Spruce_V52_Bough.glb
