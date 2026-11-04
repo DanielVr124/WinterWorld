@@ -111,8 +111,8 @@ main = replace_once(main, old_ridge, new_ridge, "distant conifer silhouettes")
 
 
 marker = "  // First Japanese cherry-blossom grove: broad natural crowns, dark branching,"
-hero_object = """  // One final V52 hero spruce anchors the near path. The shared procedural
-  // species remain in the wider forest as lighter background/understory trees.
+hero_object = """  // One full-detail V52 hero spruce anchors the near path. The other conifers
+  // use the repaired shape-preserving V52 forest LOD.
   const heroSpruceV52Y=terrainHeight(heroSpruceV52Position[0],heroSpruceV52Position[1]);
   const heroSpruceV52Spin=rng(52052)*Math.PI*2;
   objects.push({
