@@ -81,6 +81,102 @@ jobs:
           set -euo pipefail
           python scripts/integrate_v52_game.py work/WinterWorld_Prototype
 
+      - name: Write Build 017 documentation and test context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          game = Path("work/WinterWorld_Prototype")
+          index = game / "index.html"
+          html = index.read_text(encoding="utf-8")
+          html = html.replace("Development Build 016", "Development Build 017")
+          html = html.replace("DEVELOPMENT BUILD 016 · M2", "DEVELOPMENT BUILD 017 · M2")
+          html = html.replace(
+              "Final V52 spruce across the entire conifer forest · Build 016",
+              "Intact snow and needle islands in every repeated V52 forest tree · Build 017"
+          )
+          html = html.replace(
+              "M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD",
+              "M2 VISUAL BENCHMARK · SHAPE-PRESERVING V52 FOREST LOD · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD"
+          )
+          index.write_text(html, encoding="utf-8")
+
+          changelog = """# Build 017 — Shape-Preserving V52 Forest LOD Repair
+
+          ## Fixed
+          - Removed random per-face deletion that had fragmented snow patches and individual needles in repeated forest trees.
+          - The forest LOD now retains complete connected snow and needle islands.
+          - Increased repeated-tree bough detail while keeping a measured per-instance geometry budget.
+          - Preserved the V52 Blender Z-up to WebGL Y-up conversion and ground-root normalization.
+
+          ## Implemented
+          - The near-path showcase tree keeps the high-detail V52 hero mesh.
+          - Every other conifer—including understory and distant ridgeline placements—uses the repaired V52 forest LOD from the same source asset.
+          - Per-instance scale, rotation, and subtle tint variation remain.
+          - Sakura grove, terrain, path, cabin, rocks, lanterns, controls, collisions, fog, snowfall, settings, and world layout remain unchanged.
+
+          ## Validation and reports
+          - Automated checks cover coordinate conversion, orientation, root placement, mesh buffers, finite attributes, index bounds, scene integration, and ZIP integrity.
+          - The build publishes a human-readable test report and machine-readable QA JSON.
+          - A Blender render compares the actual exported hero and forest LOD meshes.
+          - In-browser visual review and target-PC FPS remain pending user testing.
+          """
+          (game / "BUILD_017_CHANGELOG.md").write_text(changelog, encoding="utf-8")
+
+          readme = """# Winter World — Development Build 017
+
+          A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 017 repairs the repeated V52 forest LOD by preserving complete snow patches and needle islands instead of randomly cutting their faces. The near-path showcase remains the high-detail V52 hero tree.
+
+          ## Run the world
+          1. Extract the ZIP.
+          2. Open the WinterWorld_Prototype folder.
+          3. Open index.html in a current Chrome or Edge browser.
+          4. Click Enter the World.
+
+          If local-file rendering is blocked, run py -m http.server 8000 in this folder and open http://127.0.0.1:8000/.
+
+          ## Controls
+          - W, A, S, D or arrow keys: move
+          - Mouse: look around
+          - Shift: move faster
+          - Esc: release the mouse / close settings
+          - Click the scene: capture the mouse
+          - E: development note
+          - F3: performance and player diagnostics
+
+          ## Build 017 — V52 Forest LOD Repair
+          - Preserves whole connected snow and needle islands in repeated V52 trees.
+          - Increases bough detail in the shared forest LOD.
+          - Retains the high-detail hero and the same V52 source for all other conifers.
+          - Includes the automated test report, QA JSON, and actual Blender LOD comparison render.
+          - In-browser visuals and target-PC FPS still need user review.
+          """
+          (game / "README.md").write_text(readme, encoding="utf-8")
+
+          progress = """# Winter World — Development Progress
+
+          ## Current status
+          - **Latest build:** 017
+          - **Current milestone:** M2 — Quality Benchmark
+          - **Current sub-pass:** Shape-preserving V52 forest LOD repair
+          - **Build 016 issue:** The repeated forest LOD was reduced by randomly deleting individual faces from dense snow and needle meshes. This fragmented the authored surfaces and caused non-hero trees to look broken.
+          - **Build 017 fix:** Complete connected snow and needle islands are sampled as units. The forest LOD retains intact authored pieces while remaining lighter than the full hero mesh.
+
+          ## Build 017 — Implemented
+          - V52 Z-up to WebGL Y-up conversion and y=0 root normalization retained.
+          - Every conifer still uses the V52 source asset.
+          - Snow and needle geometry uses deterministic whole-island sampling, not random face deletion.
+          - Added geometry QA, a test report, and an actual Blender LOD comparison render.
+
+          ## Pending
+          - User visual confirmation in the live browser.
+          - Target-PC frame-rate and visual review.
+          """
+          (game / "PROGRESS.md").write_text(progress, encoding="utf-8")
+          PY
+
       - name: Validate JavaScript, mesh buffers, and package
         shell: bash
         run: |
@@ -134,7 +230,6 @@ jobs:
           const main = fs.readFileSync('src/main.js', 'utf8');
           if (main.includes('mesh:firSpecies[') || main.includes('add(pineCone')) throw new Error('Legacy conifer placement remains');
           if (!main.includes('mesh:forestSpruceV52Mesh')) throw new Error('V52 forest mesh not used for conifer placement');
-          const main = fs.readFileSync('src/main.js', 'utf8');
           const qa = {
             build: '017',
             source: 'V52 Cycles spruce',
@@ -193,10 +288,10 @@ jobs:
           PY
           ls -lh WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip BUILD_017_TEST_REPORT.md BUILD_017_TEST_REPORT.json V52_Build017_Hero_vs_ForestLOD.png work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
 
-      - name: Upload Build 016 and full-forest integration stats
+      - name: Upload Build 017 repair build, reports, and renders
         uses: actions/upload-artifact@v4
         with:
-          name: WinterWorld-Build016-V52-ConiferForest
+          name: WinterWorld-Build017-V52-ForestLODRepair
           path: |
             WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip
             work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
@@ -206,9 +301,6 @@ jobs:
             V52_Build017_Hero_vs_ForestLOD.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_Bough_SnowContact_Closeup.png
-            V52_Build017_Hero_vs_ForestLOD.png
-            BUILD_017_TEST_REPORT.md
-            BUILD_017_TEST_REPORT.json
           if-no-files-found: error
           retention-days: 14
 
