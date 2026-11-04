@@ -10,10 +10,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: winterworld-v47-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - name: Check out diagnostic job
         uses: actions/checkout@v4
@@ -45,8 +49,8 @@ jobs:
         run: |
           set -uo pipefail
           echo "V47 diagnostic started: $(date -u +%FT%TZ)"
-          /usr/bin/time -v timeout --signal=TERM --kill-after=20s 900s \
-            python -u -c 'import faulthandler, runpy; faulthandler.enable(); faulthandler.dump_traceback_later(90, repeat=True); runpy.run_path("build_hero_spruce_v47.py", run_name="__main__")' \
+          /usr/bin/time -v timeout --signal=TERM --kill-after=10s 120s \
+            python -u -c 'import faulthandler, runpy; faulthandler.enable(); faulthandler.dump_traceback_later(20, repeat=True); runpy.run_path("build_hero_spruce_v47.py", run_name="__main__")' \
             2>&1 | tee "$GITHUB_WORKSPACE/v47-diagnostic.log"
           result=${PIPESTATUS[0]}
           echo "V47 diagnostic exit code: $result"
