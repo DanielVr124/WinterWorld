@@ -6,6 +6,11 @@ on:
       - Build Winter World 021 with balanced fuller V52 forest LODs
     types:
       - completed
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-build021-release.yml
 
 permissions:
   contents: write
@@ -13,7 +18,7 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download the successful Build 021 artifact
@@ -22,7 +27,7 @@ jobs:
           name: WinterWorld-Build021-V52-FullerHealthyForest
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id || '41928641925' }}
           path: artifacts
 
       - name: Prepare release assets and verify package
@@ -55,7 +60,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TARGET: ${{ github.event.workflow_run.head_sha }}
+          TARGET: ${{ github.event.workflow_run.head_sha || '97e3415d03f0af27da056341c6f40d42cb0a88ab' }}
         shell: bash
         run: |
           set -euo pipefail
