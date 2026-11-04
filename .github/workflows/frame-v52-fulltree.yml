@@ -403,7 +403,7 @@ jobs:
               "detail_area('Close-up warm key', (2.8, -3.2, 3.2), 1450, (1.0, 0.88, 0.76), 2.4)",
               "detail_area('Close-up cool fill', (-2.6, -1.2, 1.8), 1150, (0.70, 0.84, 1.0), 2.8)",
               "detail_area('Close-up rim', (0.3, 3.0, 2.2), 1650, (0.78, 0.88, 1.0), 2.0)",
-              "detail_camera = make_camera('Bough snow-contact inspection', tuple(detail_center + Vector((0.15, -3.45, 1.25))), tuple(detail_center), 40.0)",
+              "detail_camera = make_camera('Bough snow-contact inspection', tuple(detail_center + Vector((0.15, 3.45, 1.25))), tuple(detail_center), 40.0)",
               "render_to(scene, detail_camera, 'V52_Cycles_Bough_SnowContact_Closeup.png', 48, 1500, 1000)",
               "bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_Bough_SnowContact_Inspection.blend'))",
               "print('BOUGH_SNOW_CONTACT_INSPECTION_COMPLETE', flush=True)",
