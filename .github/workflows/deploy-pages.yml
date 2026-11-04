@@ -91,7 +91,7 @@ jobs:
 
           index = Path("_site/index.html")
           html = index.read_text(encoding="utf-8")
-          version = os.environ["GITHUB_SHA"][:12]
+          version = os.environ["GITHUB_RUN_ID"]
           replacements = {
               'href="style.css"': f'href="style.css?v={version}"',
               'src="src/sakura_mesh_data.js"': f'src="src/sakura_mesh_data.js?v={version}"',
