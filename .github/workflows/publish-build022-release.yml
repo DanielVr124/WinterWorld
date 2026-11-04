@@ -27,7 +27,7 @@ jobs:
           name: WinterWorld-Build022-V52-FullerBoughs
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id || 'BUILD_RUN_ID' }}
+          run-id: ${{ github.event.workflow_run.id || '41930569447' }}
           path: artifacts
 
       - name: Prepare release assets and verify package
@@ -60,7 +60,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TARGET: ${{ github.event.workflow_run.head_sha || 'BUILD_COMMIT_SHA' }}
+          TARGET: ${{ github.event.workflow_run.head_sha || 'd9e3d02dea222e0012685dbc1f7c46eb02cb9a8f' }}
         shell: bash
         run: |
           set -euo pipefail
