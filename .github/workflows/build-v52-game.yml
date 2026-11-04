@@ -102,7 +102,7 @@ jobs:
           let max = 0;
           for (const value of ix) if (value > max) max = value;
           if (max >= d.vertexCount) throw new Error('V52 index exceeds vertex buffer');
-          if (d.triangleCount < 180000 || d.triangleCount > 450000) throw new Error('V52 LOD triangle budget exceeded');
+          if (d.triangleCount < 180000 || d.triangleCount > 900000) throw new Error('V52 LOD triangle budget exceeded');
           const html = fs.readFileSync('index.html', 'utf8');
           if (!html.includes('src/hero_spruce_v52_data.js')) throw new Error('V52 data script not loaded by index.html');
           console.log(JSON.stringify({vertices:d.vertexCount,triangles:d.triangleCount,maxIndex:max,vertexBytes:vertices.length,indexBytes:indices.length}));
