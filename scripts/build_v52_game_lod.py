@@ -376,14 +376,14 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=80_000,
-    max_triangles=100_000,
+    min_triangles=105_000,
+    max_triangles=115_000,
 )
 forest_low_stats = write_mesh_lod(
     "ForestLow",
     FOREST_LOW_COMPONENT_RATIOS,
     output_forest_low_js,
-    min_triangles=32_000,
+    min_triangles=40_000,
     max_triangles=45_000,
 )
 
