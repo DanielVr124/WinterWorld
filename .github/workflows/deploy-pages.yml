@@ -75,7 +75,7 @@ jobs:
               exit 1
             fi
           done
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+          if [[ "$USE_BUILD_015" == "true" ]]; then
             for file in src/hero_spruce_v52_data.js src/hero_spruce_v52_stats.json; do
               if [[ ! -s "$GAME_DIR/$file" ]]; then
                 echo "::error::Build 015 asset is missing: $GAME_DIR/$file"
