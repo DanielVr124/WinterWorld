@@ -55,7 +55,7 @@ addition = """
     if(addCollider)addCircleCollider(x,z,.31*sc,'V52 spruce trunk');
     objects.push({
       mesh:forestSpruceV52Mesh,
-      lodMeshes:{hero:heroSpruceV52Mesh,medium:forestSpruceV52Mesh,far:forestLowSpruceV52Mesh},
+      lodMeshes:{medium:forestSpruceV52Mesh,far:forestLowSpruceV52Mesh},
       lodPos:[x,z],
       lodScale:sc,
       lodForceFar:forceFar,
@@ -132,18 +132,29 @@ distance_batcher = """  let sceneBatches = [];
   let sceneInstanceCount=0,sceneTriangleCount=0;
   let sceneLodCounts={hero:0,medium:0,far:0};
   const meshInstanceBuffers=new Map();
-  let lastBatchedCameraX=NaN,lastBatchedCameraZ=NaN;
   function rebuildSceneBatches(force=false){
-    if(!force&&Number.isFinite(lastBatchedCameraX)&&Math.hypot(camera.x-lastBatchedCameraX,camera.z-lastBatchedCameraZ)<.65)return;
-    const batches=new Map();
-    sceneInstanceCount=0;sceneTriangleCount=0;sceneLodCounts={hero:0,medium:0,far:0};
+    // Resolve each tree's LOD first. Rebuild GPU instance data only when a tree
+    // actually crosses a detail boundary, not every time the player walks.
+    const resolved=[];
+    let lodChanged=force;
     for(const instance of objects){
       let mesh=instance.mesh;
       if(instance.lodMeshes){
         const distance=Math.hypot(camera.x-instance.lodPos[0],camera.z-instance.lodPos[1]);
-        if(instance.lodForceFar||instance.lodScale<.55||distance>=78){mesh=instance.lodMeshes.far;sceneLodCounts.far++;}
-        else if(distance<26){mesh=instance.lodMeshes.hero;sceneLodCounts.hero++;}
-        else{mesh=instance.lodMeshes.medium;sceneLodCounts.medium++;}
+        mesh=(instance.lodForceFar||instance.lodScale<.55||distance>=68)
+          ?instance.lodMeshes.far:instance.lodMeshes.medium;
+        if(instance._lodMesh!==mesh){instance._lodMesh=mesh;lodChanged=true;}
+      }
+      resolved.push({instance,mesh});
+    }
+    if(!lodChanged)return;
+
+    const batches=new Map();
+    sceneInstanceCount=0;sceneTriangleCount=0;sceneLodCounts={hero:0,medium:0,far:0};
+    for(const {instance,mesh} of resolved){
+      if(instance.lodMeshes){
+        if(mesh===instance.lodMeshes.far)sceneLodCounts.far++;
+        else sceneLodCounts.medium++;
       }else if(mesh===heroSpruceV52Mesh){sceneLodCounts.hero++;}
       let batch=batches.get(mesh);
       if(!batch){batch={mesh,instances:[]};batches.set(mesh,batch);}
@@ -167,7 +178,7 @@ distance_batcher = """  let sceneBatches = [];
       sceneBatches.push({mesh:batch.mesh,count:batch.instances.length});
       sceneInstanceCount+=batch.instances.length;sceneTriangleCount+=(batch.mesh.count/3)*batch.instances.length;
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER,null);lastBatchedCameraX=camera.x;lastBatchedCameraZ=camera.z;
+    gl.bindBuffer(gl.ARRAY_BUFFER,null);
   }
 """
 main = main[:batch_start] + distance_batcher + main[batch_end:]
