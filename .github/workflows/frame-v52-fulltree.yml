@@ -145,6 +145,58 @@ jobs:
           fn_start = s.index("    def add_snow_ribbon(")
           fn_end = s.index("\n    def add_snow_clump(", fn_start)
           fn = s[fn_start:fn_end]
+          # Align snow with the same perpendicular cross-section used by add_tube().
+          old_frame = "\n".join([
+              "            up=np.array([0.,1.,0.])",
+              "            side=unit(np.cross(up,tangent))",
+              "            if np.linalg.norm(side)<.15:",
+              "                side=unit(np.cross(np.array([0.,0.,1.]),tangent))",
+              "            if np.linalg.norm(side)<.15: side=np.array([1.,0.,0.])",
+          ])
+          new_frame = "\n".join([
+              "            world_up=np.array([0.,1.,0.])",
+              "            up=world_up-tangent*float(np.dot(world_up,tangent))",
+              "            if np.linalg.norm(up)<.15:",
+              "                world_ref=np.array([0.,0.,1.])",
+              "                up=world_ref-tangent*float(np.dot(world_ref,tangent))",
+              "            if np.linalg.norm(up)<.15:",
+              "                world_ref=np.array([1.,0.,0.])",
+              "                up=world_ref-tangent*float(np.dot(world_ref,tangent))",
+              "            up=unit(up)",
+              "            side=unit(np.cross(up,tangent))",
+          ])
+          if old_frame in fn:
+              fn=fn.replace(old_frame,new_frame,1)
+          elif "up=world_up-tangent*float(np.dot(world_up,tangent))" not in fn:
+              raise SystemExit("Could not align snow's local frame to the branch tube frame.")
+
+          # Follow the tube's circular upper arc at each lateral station and bury
+          # the hidden underside just enough to eliminate a visible wood/snow seam.
+          old_bed = "\n".join([
+              "                bed_radius=support_radius if support_radius is not None else max(lift,thickness)",
+              "                bottom_half=min(width*.72,bed_radius*.72)",
+              "                bottom_y=center[1]+bed_radius*.35",
+              "                bottom_p=center+up*(bottom_y-center[1])+side*(x*bottom_half)",
+          ])
+          new_bed = "\n".join([
+              "                bed_radius=max(support_radius if support_radius is not None else max(lift,thickness),.0008)",
+              "                bottom_half=min(width*.72,bed_radius*.82)",
+              "                bottom_lateral=x*bottom_half",
+              "                # Tube radius is circular in this local cross-section; follow its upper arc.",
+              "                wood_cross_radius=bed_radius*.96",
+              "                wood_surface=math.sqrt(max(wood_cross_radius*wood_cross_radius-bottom_lateral*bottom_lateral,0.0))",
+              "                embed_depth=max(.00016,bed_radius*.20)",
+              "                bottom_offset=max(0.0,wood_surface-embed_depth)",
+              "                bottom_y=center[1]+bottom_offset",
+              "                bottom_p=center+up*(bottom_y-center[1])+side*bottom_lateral",
+          ])
+          if old_bed in fn:
+              fn=fn.replace(old_bed,new_bed,1)
+          elif "wood_cross_radius=bed_radius*.96" not in fn:
+              raise SystemExit("Could not replace flat underside with tube-profile contact skin.")
+
+          if "wood_cross_radius=bed_radius*.96" not in fn or "up=world_up-tangent*float(np.dot(world_up,tangent))" not in fn:
+              raise SystemExit("Branch-aligned snow contact skin was not fully applied.")
           if "bottom_verts.append(bottom_p)" not in fn:
               old_top_lists = "        verts=[]; cols=[]"
               new_top_lists = "        verts=[]; cols=[]; bottom_verts=[]; bottom_cols=[]"
