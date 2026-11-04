@@ -16,7 +16,7 @@ def replace_once(text, old, new, label):
 main = main_path.read_text(encoding="utf-8")
 marker = "  const sakuraData=window.WinterWorldSakuraData;"
 loader = """  const heroSpruceV52Data=window.WinterWorldHeroSpruceV52Data;
-  if(!heroSpruceV52Data) throw new Error('V52 hero spruce data did not load. Keep src/hero_spruce_v52_data.js beside main.js.');
+  if(!heroSpruceV52Data) throw new Error('V52 hero spruce data did not load.');
   const heroSpruceV52Mesh=makeColorMesh(
     decodeTypedBase64(heroSpruceV52Data.vertices,Float32Array),
     decodeTypedBase64(heroSpruceV52Data.indices,Uint32Array)
@@ -24,6 +24,15 @@ loader = """  const heroSpruceV52Data=window.WinterWorldHeroSpruceV52Data;
   const heroSpruceV52TriangleCount=heroSpruceV52Data.triangleCount;
   heroSpruceV52Data.vertices='';heroSpruceV52Data.indices='';
   window.WinterWorldHeroSpruceV52Data=null;
+  const forestSpruceV52Data=window.WinterWorldForestSpruceV52Data;
+  if(!forestSpruceV52Data) throw new Error('V52 forest spruce LOD data did not load.');
+  const forestSpruceV52Mesh=makeColorMesh(
+    decodeTypedBase64(forestSpruceV52Data.vertices,Float32Array),
+    decodeTypedBase64(forestSpruceV52Data.indices,Uint32Array)
+  );
+  const forestSpruceV52TriangleCount=forestSpruceV52Data.triangleCount;
+  forestSpruceV52Data.vertices='';forestSpruceV52Data.indices='';
+  window.WinterWorldForestSpruceV52Data=null;
 """
 main = replace_once(main, marker, loader + marker, "hero mesh initialization")
 
@@ -31,8 +40,77 @@ marker = "  const rng=(n)=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-
 addition = """
   const heroSpruceV52Position=[10,-4];
   function nearHeroSpruceV52(x,z){return Math.hypot(x-heroSpruceV52Position[0],z-heroSpruceV52Position[1])<5.4;}
+  function addV52Conifer(x,z,sc,seed,addCollider=false){
+    const y=terrainHeight(x,z),spin=rng(seed+52000)*Math.PI*2;
+    const tint=.93+rng(seed+53000)*.10;
+    if(addCollider)addCircleCollider(x,z,.31*sc,'V52 spruce trunk');
+    objects.push({
+      mesh:forestSpruceV52Mesh,
+      model:modelMatrix([x,y,z],[0,spin,0],[sc,sc,sc]),
+      color:[tint,tint*.99,tint*1.015],
+      emissive:0
+    });
+  }
 """
 main = replace_once(main, marker, marker + addition, "hero placement constants")
+# Remove the old three-species procedural conifer mesh construction entirely.
+species_start = main.find("  const firSpecies=[")
+if species_start < 0:
+    raise RuntimeError("Legacy procedural conifer species block was not found")
+species_end = main.find("  const snowRock=", species_start)
+if species_end < 0:
+    raise RuntimeError("Could not find end of legacy conifer species block")
+main = main[:species_start] + "  // All conifer geometry is loaded from the final V52 spruce asset.\n" + main[species_end:]
+
+# Remove the old cone primitive; no conifer should fall back to a cone silhouette.
+main = replace_once(
+    main,
+    "  const box=boxMesh(), pineCone=coneMesh(1,1,10), trunk=cylinderMesh(.18,1,8), cyl=cylinderMesh(.5,1,12);",
+    "  const box=boxMesh(), trunk=cylinderMesh(.18,1,8), cyl=cylinderMesh(.5,1,12);",
+    "legacy cone mesh",
+)
+
+old_tree = """  function tree(x,z,sc=1,variant=0,addCollider=true){
+    // Keep the denser M2 vegetation clear of the existing cabin and doorway.
+    if(Math.abs(x-5)<7.2&&Math.abs(z+24)<8.0)return;
+    if(inSakuraGroveClearance(x,z))return;
+    if(nearHeroSpruceV52(x,z))return;
+    if(addCollider)addCircleCollider(x,z,.31*sc,'tree trunk');
+    const y=terrainHeight(x,z),species=variant%firSpecies.length,spin=rng(Math.round((x+75)*91+(z+70)*17))*Math.PI*2;
+    const tint=.92+rng(Math.round(x*13+z*7))* .12;
+    objects.push({mesh:firSpecies[species],model:modelMatrix([x,y,z],[0,spin,0],[sc,sc,sc]),color:[tint,tint*.99,tint*1.015],emissive:0});
+  }
+"""
+new_tree = """  function tree(x,z,sc=1,variant=0,addCollider=true){
+    // Keep the denser M2 vegetation clear of the existing cabin and doorway.
+    if(Math.abs(x-5)<7.2&&Math.abs(z+24)<8.0)return;
+    if(inSakuraGroveClearance(x,z))return;
+    if(nearHeroSpruceV52(x,z))return;
+    const seed=Math.round((x+75)*91+(z+70)*17)+variant*101;
+    addV52Conifer(x,z,sc,seed,addCollider);
+  }
+"""
+main = replace_once(main, old_tree, new_tree, "legacy conifer placement")
+
+old_ridge = """  for(let i=0;i<12;i++){const x=(i-5.5)*18,z=-67-rng(i+75)*20,h=10+rng(i+43)*16;add(pineCone,[x,h*.08,z],[11,h,11],[.11,.18,.26]);}
+  for(let i=0;i<28;i++){
+    const x=-92+rng(i+3100)*184,z=-72-rng(i+3200)*17,h=6+rng(i+3300)*9;
+    add(pineCone,[x,h*.48,z],[1.7+rng(i+3400)*1.2,h,1.7+rng(i+3500)*1.2],[.075,.13,.19]);
+  }
+"""
+new_ridge = """  // Distant ridgeline conifers use the same V52-derived forest LOD too.
+  for(let i=0;i<12;i++){
+    const x=(i-5.5)*18,z=-67-rng(i+75)*20,h=10+rng(i+43)*16;
+    addV52Conifer(x,z,h/8.42,i+8000,false);
+  }
+  for(let i=0;i<28;i++){
+    const x=-92+rng(i+3100)*184,z=-72-rng(i+3200)*17,h=6+rng(i+3300)*9;
+    addV52Conifer(x,z,h/8.42,i+9000,false);
+  }
+"""
+main = replace_once(main, old_ridge, new_ridge, "distant conifer silhouettes")
+
+
 
 marker = "    if(inSakuraGroveClearance(x,z))return;"
 main = replace_once(main, marker, marker + "\n    if(nearHeroSpruceV52(x,z))return;", "procedural-tree clearance")
@@ -71,30 +149,31 @@ old_diag = "Scene instances: " + dollar + "{sceneInstanceCount}\nSakura body:"
 new_diag = (
     "Scene instances: " + dollar + "{sceneInstanceCount}\n"
     "V52 hero spruce: " + dollar + "{heroSpruceV52TriangleCount.toLocaleString()} tris\n"
+    "V52 forest spruce LOD: " + dollar + "{forestSpruceV52TriangleCount.toLocaleString()} tris/instance\n"
     "Sakura body:"
 )
 main = replace_once(main, old_diag, new_diag, "hero performance diagnostics")
 main_path.write_text(main, encoding="utf-8", newline="\n")
 
 html = html_path.read_text(encoding="utf-8")
-html = html.replace("Development Build 014", "Development Build 015")
-html = html.replace("DEVELOPMENT BUILD 014 · M2", "DEVELOPMENT BUILD 015 · M2")
+html = html.replace("Development Build 014", "Development Build 016")
+html = html.replace("DEVELOPMENT BUILD 014 · M2", "DEVELOPMENT BUILD 016 · M2")
 html = html.replace(
     "Explore three more distinct evergreen forms with less repetitive branching and broader, more visible snow resting along the boughs.",
-    "Explore a new hero spruce built from the final V52 tree asset, with dense individual needles and sculpted snow settled directly onto the branches."
+    "Every conifer now uses the final upright V52 spruce model, with a high-detail hero tree and optimized shared forest LOD."
 )
 html = html.replace(
     "Evergreen silhouette and moonlit branch-snow refinement · Visual pass 4 · 014",
-    "Final V52 hero spruce · Optimized WebGL2 game mesh · Build 015"
+    "Final V52 spruce across the entire conifer forest · Build 016"
 )
 html = html.replace(
     "M2 VISUAL BENCHMARK · FOREST ART PASS 4 · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD",
-    "M2 VISUAL BENCHMARK · FINAL V52 HERO SPRUCE INTEGRATED · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD"
+    "M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD"
 )
 html = replace_once(
     html,
     '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/main.js"></script>',
-    '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/hero_spruce_v52_data.js"></script>\n  <script src="src/main.js"></script>',
+    '  <script src="src/sakura_mesh_data.js"></script>\n  <script src="src/hero_spruce_v52_data.js"></script>\n  <script src="src/forest_spruce_v52_data.js"></script>\n  <script src="src/main.js"></script>',
     "V52 script include",
 )
 html_path.write_text(html, encoding="utf-8", newline="\n")
@@ -165,3 +244,84 @@ progress += """
 progress_path.write_text(progress, encoding="utf-8", newline="\n")
 
 print("Patched Build 014 source into Build 015 with the final V52 hero spruce.")
+
+
+# Build 016 — full-forest V52 integration documentation.
+changelog = """# Build 016 — Upright V52 Spruce Across the Entire Conifer Forest
+
+## Fixed
+- Converted V52 positions and normals from Blender Z-up to the WebGL Y-up world: (x, y, z) -> (x, z, -y).
+- Normalized the lowest point of the root snow skirt to y=0 so instances sit on the terrain.
+- Added build-time checks that reject a sideways or incorrectly oriented source mesh.
+
+## Implemented
+- Replaced every prior procedural conifer with an instance derived from the final V52 spruce asset.
+- The near-path showcase tree uses the high-detail hero LOD.
+- All other trees—including the young understory and distant ridgeline silhouettes—use a shared lightweight V52 forest LOD from the exact same source mesh.
+- Retained subtle per-instance scale, rotation, and tint variation.
+- Preserved the sakura grove, terrain, path, cabin, rocks, lanterns, controls, collision behavior, fog, snowfall, settings, and world layout.
+
+## Performance
+- The forest LOD is shared across all repeated conifers rather than drawing the 834k-triangle hero mesh hundreds of times.
+- LOD counts and upright bounds are recorded in src/hero_spruce_v52_stats.json.
+- The hero LOD stays below 900,000 triangles and the repeated forest LOD stays below 25,000 triangles per instance.
+
+## Validation
+- Blender import and independent hero/forest LOD conversion.
+- Z-up to Y-up position and normal conversion.
+- Upright-bounds and ground-origin checks.
+- JavaScript syntax, finite vertex, index-range, mesh-buffer, triangle-budget, and ZIP-integrity checks.
+- Target-PC visual and FPS review still requires user testing.
+"""
+(game / "BUILD_016_CHANGELOG.md").write_text(changelog, encoding="utf-8", newline="\\n")
+readme = """# Winter World — Development Build 016
+
+A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 016 fixes the V52 spruce orientation and replaces every conifer in the playable forest with the final V52 model. The near-path showcase tree uses a high-detail LOD; all other conifers use a lightweight LOD derived from the same asset.
+
+## Run the world
+1. Extract the ZIP.
+2. Open the \`WinterWorld_Prototype\` folder.
+3. Open \`index.html\` in a current Chrome or Edge browser.
+4. Click **Enter the World**.
+
+If local-file rendering is blocked, run \`py -m http.server 8000\` in this folder and open \`http://127.0.0.1:8000/\`.
+
+## Controls
+- \`W\`, \`A\`, \`S\`, \`D\` or arrow keys: move
+- Mouse: look around
+- \`Shift\`: move faster
+- \`Esc\`: release the mouse / close settings
+- Click the scene: capture the mouse
+- \`E\`: development note
+- \`F3\`: performance and player diagnostics
+
+## Build 016 — V52 Conifer Forest
+- Corrects Blender Z-up to WebGL Y-up orientation.
+- Uses the V52 model for every conifer, including distant silhouettes.
+- Uses a detailed hero LOD and a shared lightweight V52-derived forest LOD.
+- Sakura and the rest of the existing world remain unchanged.
+- Visual review and target-PC performance testing are pending.
+"""
+readme_path.write_text(readme, encoding="utf-8", newline="\\n")
+progress = """# Winter World — Development Progress
+
+## Current status
+- **Latest build:** 016
+- **Current milestone:** M2 — Quality Benchmark
+- **Current sub-pass:** Upright V52 conifer forest integration
+- **Build 015:** First hero-tree integration exposed the Blender Z-up / WebGL Y-up mismatch and left the other conifers on the previous procedural meshes.
+- **Build 016:** Converts V52 into the WebGL Y-up basis and replaces all forest, understory, and distant conifer placements with the same V52 model source. Target-PC visual/performance review is pending.
+
+## Build 016 — Implemented
+- V52 vertices and normals converted with (x, y, z) -> (x, z, -y).
+- Snow-root base normalized to y=0.
+- V52 is the sole conifer model across the playable forest and distant ridgeline.
+- High-detail hero LOD plus shared lightweight forest LOD from the same model.
+- Existing sakura grove and non-conifer world systems preserved.
+
+## Pending
+- User visual confirmation of upright orientation and consistent V52 conifer coverage.
+- Target-PC FPS and visual review.
+"""
+progress_path.write_text(progress, encoding="utf-8", newline="\\n")
+print("Prepared Build 016: all conifers use upright V52 geometry and shared LODs.")
