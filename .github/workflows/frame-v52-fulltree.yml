@@ -89,25 +89,20 @@ jobs:
           """
           source = source[:start] + new_setup + source[end:]
 
-          old_camera = "full_camera = make_camera('Whole spruce | medium-distance three-quarter', (7.0, 5.8, 9.0), (0.0, 4.15, 0.0), 40.0)"
-          new_camera = """tree_bounds = [obj.matrix_world @ Vector(corner) for obj in tree_objects for corner in obj.bound_box]
-          tree_min = Vector((min(v.x for v in tree_bounds), min(v.y for v in tree_bounds), min(v.z for v in tree_bounds)))
-          tree_max = Vector((max(v.x for v in tree_bounds), max(v.y for v in tree_bounds), max(v.z for v in tree_bounds)))
-          tree_center = (tree_min + tree_max) * 0.5
-          print('BLENDER_TREE_WORLD_BOUNDS', tuple(tree_min), tuple(tree_max), 'center=', tuple(tree_center), flush=True)
-          full_camera = make_camera('Whole spruce | centered Z-up three-quarter',
-                                    tuple(tree_center + Vector((7.0, -10.0, 5.3))),
-                                    tuple(tree_center), 46.0)"""
+          old_camera = "                          tuple(tree_center), 46.0)"
+          new_camera = "                          tuple(tree_center), 40.0)"
           if old_camera not in source:
-              raise SystemExit("Expected previous camera line was not found; refusing to guess.")
+              raise SystemExit("Expected Z-up camera lens line was not found; refusing to guess.")
           source = source.replace(old_camera, new_camera, 1)
 
-          old_render = "render_to(scene, full_camera, 'V52_Cycles_FullTree_Framed.png', 48, 1600, 1900)"
-          new_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_ZUp_Framed.png', 48, 1600, 1900)
+          old_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_ZUp_Framed.png', 48, 1600, 1900)
           bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_ZUpFramed.blend'))
           print('Z_UP_FULL_TREE_RENDER_COMPLETE', flush=True)"""
+          new_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_ZUp_Framed_40mm.png', 48, 1600, 1900)
+          bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_ZUpFramed_40mm.blend'))
+          print('Z_UP_FULL_TREE_RENDER_40MM_COMPLETE', flush=True)"""
           if old_render not in source:
-              raise SystemExit("Expected framed full-tree render call was not found; refusing to guess.")
+              raise SystemExit("Expected Z-up render block was not found; refusing to guess.")
           source = source.replace(old_render, new_render, 1)
 
           # The source script is already a single-view renderer.
@@ -174,8 +169,8 @@ jobs:
         with:
           name: WinterWorld-V52-FullTree-Framed
           path: |
-            render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed.png
-            render-v52-source/v52/Hero_Spruce_V52_ZUpFramed.blend
+            render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
+            render-v52-source/v52/Hero_Spruce_V52_ZUpFramed_40mm.blend
             render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
             render-v52-source/v52/Hero_Spruce_V52_Bough.glb
             render-v52-source/v52/Hero_Spruce_V52_Stats.json
