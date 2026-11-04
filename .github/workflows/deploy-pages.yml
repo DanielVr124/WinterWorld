@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       USE_BUILD_015: ${{ github.event_name == 'workflow_run' }}
+      BUILD_ARCHIVE: ${{ github.event.workflow_run.name == 'Build Winter World 016 with upright V52 conifer forest' && 'WinterWorld_Playtest_Build016_V52_ConiferForest.zip' || 'WinterWorld_Playtest_Build015_V52.zip' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -63,7 +64,7 @@ jobs:
           set -euo pipefail
           mkdir -p package _site
           if [[ "$USE_BUILD_015" == "true" ]]; then
-            unzip -q artifacts/WinterWorld_Playtest_Build015_V52.zip -d package
+            unzip -q "artifacts/$BUILD_ARCHIVE" -d package
           else
             unzip -q WinterWorld_Playtest.zip -d package
           fi
