@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: winterworld-build018-v52-fuller-forest
+  group: winterworld-build020-performance-lod
   cancel-in-progress: true
 
 jobs:
@@ -93,7 +93,7 @@ jobs:
           html = index.read_text(encoding="utf-8")
           html = html.replace("Development Build 016", "Development Build 020")
           html = html.replace("DEVELOPMENT BUILD 016 · M2", "DEVELOPMENT BUILD 020 · M2")
-          html = html.replace("Final V52 spruce across the entire conifer forest · Build 016", "Distance-based full, medium, and far V52 spruce LODs · Build 020")
+          html = html.replace("Final V52 spruce across the entire conifer forest · Build 016", "Performance-optimized V52 spruce LODs · Build 020")
           html = html.replace("M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD", "M2 VISUAL BENCHMARK · DISTANCE-BASED V52 TREE DETAIL · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD")
           index.write_text(html, encoding="utf-8")
           changelog = """# Build 020 — Performance-Optimized V52 Conifer LODs
@@ -103,11 +103,11 @@ jobs:
           - Medium and far LODs now retain 5% and 1.5% respectively of the complete connected snow and needle islands after source-component optimization.
 
           ## Runtime detail levels
-          - Mature trees within 26m use the full-detail V52 hero mesh.
-          - Trees from 26m to 68m use the fuller medium V52 mesh (roughly 55k triangles).
-          - Trees beyond 68m use the far V52 mesh (roughly 20k triangles).
+          - Only the dedicated showcase tree uses the full-detail V52 hero mesh.
+          - All other mature trees use the medium V52 mesh (target 45–65k triangles) within 68m.
+          - Trees beyond 68m use the compact far V52 mesh (target 15–25k triangles).
           - Small understory and distant ridgeline trees use the far LOD.
-          - All three LODs use the same V52 source. Batches rebuild only when tree instances cross an LOD boundary; GPU buffers are not re-uploaded for ordinary movement.
+          - All three LODs use the same V52 source. Ordinary tree instances never switch to the 835k-triangle hero mesh. Instance buffers rebuild only when a tree crosses a detail boundary; walking does not trigger repeated full-scene buffer uploads.
 
           ## Preserved
           - Hero tree orientation and root position.
@@ -128,7 +128,7 @@ jobs:
           ## V52 spruce detail
           All conifers use the final V52 source with distance-based LOD:
           - Only the single showcase tree uses the full hero mesh.
-          - Fuller medium mesh from 26m to 68m.
+          - Other mature trees use the medium mesh within 68m.
           - Far mesh beyond 68m and on small understory/distant ridgeline trees.
 
           ## Run locally
@@ -157,7 +157,7 @@ jobs:
           ## Build 020
           - Root cause: Build 018's 18% sampling followed heavy component decimation, compounding snow/needle loss.
           - Medium and far trees now retain 5% and 1.5% of complete connected snow/needle islands.
-          - Runtime selects full hero (<26m), medium (26–68m), and far (>68m) meshes; small and distant trees are assigned far LOD.
+          - Runtime keeps the full hero mesh on the single showcase tree; ordinary mature trees use medium below 68m and far beyond 68m. Small and distant trees use far LOD.
           - Restored Markdown/JSON QA reports and actual exported-mesh render.
 
           ## Pending user review
@@ -267,7 +267,7 @@ jobs:
             '- **Pending user review:** actual appearance in the live browser.',
             '- **Pending user review:** target-PC frame rate. CI geometry checks do not establish target-hardware FPS.',
             '', '## Blender preview', '',
-            'The attached V52_Build020_Hero_Medium_Far_LODs.png is rendered from the actual exported near, medium, and far buffers.'
+            'The attached V52_Build020_Hero_Medium_Far_LODs.png compares the single full-detail showcase mesh with the optimized medium and far meshes.'
           ]
           Path('BUILD_020_TEST_REPORT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
           PY
