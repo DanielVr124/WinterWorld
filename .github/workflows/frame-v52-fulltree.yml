@@ -41,33 +41,82 @@ jobs:
           test -s render-v52-source/v52/build_hero_spruce_v52.py
           test -s render-v52-source/v52/render_cycles_v52.py
 
-      - name: Frame one complete-tree view at a comfortable distance
+      - name: Correct Blender Z-up scene framing for the whole tree
         run: |
           python - <<'PY'
           from pathlib import Path
+
           path = Path("render-v52-source/v52/render_cycles_v52.py")
           source = path.read_text(encoding="utf-8")
-          old_camera = "full_camera = make_camera('Hero three-quarter camera', (10.5, 7.4, 14.0), (0.05, 4.05, -0.05), 46.0)"
-          new_camera = "full_camera = make_camera('Whole spruce | medium-distance three-quarter', (7.0, 5.8, 9.0), (0.0, 4.15, 0.0), 40.0)"
+
+          start = source.index("def setup_world_and_lights(scene):")
+          end = source.index("\ndef make_camera(", start)
+          new_setup = """def setup_world_and_lights(scene):
+              world = bpy.data.worlds.new('Winter dusk | cool ambient')
+              world.use_nodes = True
+              world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.055, 0.085, 0.13, 1)
+              world.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.34
+              scene.world = world
+
+              def area(name, location, power, color, size, target=(0.0, 0.0, 4.1)):
+                  data = bpy.data.lights.new(name, 'AREA')
+                  data.energy = power
+                  data.color = color
+                  data.shape = 'DISK'
+                  data.size = size
+                  obj = bpy.data.objects.new(name, data)
+                  scene.collection.objects.link(obj)
+                  obj.location = location
+                  obj.rotation_euler = (Vector(target) - obj.location).to_track_quat('-Z', 'Y').to_euler()
+                  return obj
+
+              # GLB import converts the tree to Blender's native Z-up coordinates.
+              area('Large soft warm winter key', (5.5, -7.0, 10.5), 3200, (1.0, 0.88, 0.77), 7.0)
+              area('Cool sky fill', (-7.0, -3.0, 8.0), 2400, (0.70, 0.83, 1.0), 8.0)
+              area('Blue snow rim', (1.0, 8.5, 9.0), 3600, (0.74, 0.86, 1.0), 6.0)
+              area('Soft frontal detail fill', (0.0, -10.0, 6.5), 850, (0.86, 0.92, 1.0), 9.0)
+
+              # A true horizontal studio floor sits below the tree on the Z-up ground plane.
+              bpy.ops.mesh.primitive_plane_add(size=200, location=(0.0, 0.0, -0.105))
+              floor = bpy.context.object
+              floor.name = 'Matte snow studio floor'
+              floor_mat = bpy.data.materials.new('Snow floor | matte blue-white')
+              floor_mat.use_nodes = True
+              floor_bs = floor_mat.node_tree.nodes.get('Principled BSDF')
+              floor_bs.inputs['Base Color'].default_value = (0.42, 0.55, 0.68, 1)
+              floor_bs.inputs['Roughness'].default_value = 0.94
+              floor.data.materials.append(floor_mat)
+          """
+          source = source[:start] + new_setup + source[end:]
+
+          old_camera = "full_camera = make_camera('Whole spruce | medium-distance three-quarter', (7.0, 5.8, 9.0), (0.0, 4.15, 0.0), 40.0)"
+          new_camera = """tree_bounds = [obj.matrix_world @ Vector(corner) for obj in tree_objects for corner in obj.bound_box]
+          tree_min = Vector((min(v.x for v in tree_bounds), min(v.y for v in tree_bounds), min(v.z for v in tree_bounds)))
+          tree_max = Vector((max(v.x for v in tree_bounds), max(v.y for v in tree_bounds), max(v.z for v in tree_bounds)))
+          tree_center = (tree_min + tree_max) * 0.5
+          print('BLENDER_TREE_WORLD_BOUNDS', tuple(tree_min), tuple(tree_max), 'center=', tuple(tree_center), flush=True)
+          full_camera = make_camera('Whole spruce | centered Z-up three-quarter',
+                                    tuple(tree_center + Vector((7.0, -10.0, 5.3))),
+                                    tuple(tree_center), 46.0)"""
           if old_camera not in source:
-              raise SystemExit("Expected original full-tree camera was not found; refusing to guess.")
+              raise SystemExit("Expected previous camera line was not found; refusing to guess.")
           source = source.replace(old_camera, new_camera, 1)
 
-          old_render = "render_to(scene, full_camera, 'V52_Cycles_FullTree_ThreeQuarter.png', 48, 1600, 1900)"
-          new_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_Framed.png', 48, 1600, 1900)
-          bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_Framed.blend'))
-          print('FRAMED_FULL_TREE_RENDER_COMPLETE', flush=True)"""
+          old_render = "render_to(scene, full_camera, 'V52_Cycles_FullTree_Framed.png', 48, 1600, 1900)"
+          new_render = """render_to(scene, full_camera, 'V52_Cycles_FullTree_ZUp_Framed.png', 48, 1600, 1900)
+          bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_ZUpFramed.blend'))
+          print('Z_UP_FULL_TREE_RENDER_COMPLETE', flush=True)"""
           if old_render not in source:
-              raise SystemExit("Expected first full-tree render call was not found; refusing to guess.")
+              raise SystemExit("Expected framed full-tree render call was not found; refusing to guess.")
           source = source.replace(old_render, new_render, 1)
-          # Stop after the single framed full-tree view; the user asked to inspect the whole tree.
+
           stop_marker = "render_to(scene, back_camera,"
           if stop_marker not in source:
               raise SystemExit("Could not locate secondary-view section.")
           source = source[:source.index(stop_marker)]
           compile(source, str(path), "exec")
           path.write_text(source, encoding="utf-8")
-          print("Camera updated: closer three-quarter view, full tree, breathing room; one preview only.")
+          print("Applied Z-up camera, lights and horizontal floor; full tree target is computed from Blender world bounds.")
           PY
 
       - name: Rebuild V47 and naturalized V52 assets
@@ -120,7 +169,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add render-v52-source.zip
-          git commit -m "Adjust V52 full-tree camera framing"
+          git commit -m "Correct V52 Blender Z-up full-tree framing"
           git push origin HEAD:render-v52-cycles
 
       - name: Upload framed preview and native scene
@@ -128,8 +177,8 @@ jobs:
         with:
           name: WinterWorld-V52-FullTree-Framed
           path: |
-            render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_Framed.png
-            render-v52-source/v52/Hero_Spruce_V52_Framed.blend
+            render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed.png
+            render-v52-source/v52/Hero_Spruce_V52_ZUpFramed.blend
             render-v52-source/v52/Hero_Spruce_V52_GameLOD.glb
             render-v52-source/v52/Hero_Spruce_V52_Bough.glb
             render-v52-source/v52/Hero_Spruce_V52_Stats.json
