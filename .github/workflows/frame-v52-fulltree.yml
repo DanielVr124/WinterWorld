@@ -82,10 +82,10 @@ jobs:
           replace_once(
               """            boughs.add_tube([p0,p1,p2,p3],[base_r,base_r*.70,base_r*.39,.0065],'twig',8,branch_seed,ridged=.025)""",
               """            # Gentle basal swelling gives the primary bough a more convincing
-              # collar where it emerges from the trunk; the taper remains gradual.
-              boughs.add_tube([p0,p1,p2,p3],
-                              [base_r*1.28,base_r*.84,base_r*.39,.0065],
-                              'twig',10,branch_seed,ridged=.022)""",
+                      # collar where it emerges from the trunk; the taper remains gradual.
+                      boughs.add_tube([p0,p1,p2,p3],
+                                      [base_r*1.28,base_r*.84,base_r*.39,.0065],
+                                      'twig',10,branch_seed,ridged=.022)""",
               "primary bough collar")
 
           replace_once(
