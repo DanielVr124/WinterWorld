@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           test -s render-v52-source.tar.xz
-          echo "60b8335e47a81ec3d797108d8c946c3ba51ad6199f73978391cb94872e2ce92  render-v52-source.tar.xz" | sha256sum --check -
+          echo "b42048ac159e4b8c29a4ca73b790000a28c43e2e422a68b7a6e2f3c4d8d8c29b  render-v52-source.tar.xz" | sha256sum --check -
           tar -xJf render-v52-source.tar.xz
           test -s render-v52-source/base/build_hero_spruce_v47.py
           test -s render-v52-source/v52/build_hero_spruce_v52.py
