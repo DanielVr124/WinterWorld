@@ -10,6 +10,8 @@ on:
 permissions:
   contents: read
   actions: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: winterworld-build015-v52
@@ -124,3 +126,75 @@ jobs:
             v52-artifact/render-v52-source/v52/cycles_renders/V52_Cycles_Bough_SnowContact_Closeup.png
           if-no-files-found: error
           retention-days: 14
+
+
+  deploy-site:
+    name: Publish Build 015 to the Winter World website
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download the Build 015 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build015-V52-HeroSpruce
+          path: artifacts
+
+      - name: Prepare and validate the website
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package _site
+          test -s artifacts/WinterWorld_Playtest_Build015_V52.zip
+          unzip -q artifacts/WinterWorld_Playtest_Build015_V52.zip -d package
+
+          GAME_DIR="package/WinterWorld_Prototype"
+          for file in index.html style.css src/main.js src/sakura_mesh_data.js src/hero_spruce_v52_data.js src/hero_spruce_v52_stats.json; do
+            if [[ ! -s "$GAME_DIR/$file" ]]; then
+              echo "::error::Expected Build 015 site file is missing: $GAME_DIR/$file"
+              exit 1
+            fi
+          done
+
+          cp -a "$GAME_DIR/." _site/
+          touch _site/.nojekyll
+
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          index = Path("_site/index.html")
+          html = index.read_text(encoding="utf-8")
+          version = os.environ["GITHUB_SHA"][:12]
+          replacements = {
+              'href="style.css"': f'href="style.css?v={version}"',
+              'src="src/sakura_mesh_data.js"': f'src="src/sakura_mesh_data.js?v={version}"',
+              'src="src/hero_spruce_v52_data.js"': f'src="src/hero_spruce_v52_data.js?v={version}"',
+              'src="src/main.js"': f'src="src/main.js?v={version}"',
+          }
+          for old, new in replacements.items():
+              if old not in html:
+                  raise SystemExit(f"Expected Build 015 asset reference not found: {old}")
+              html = html.replace(old, new)
+          if "Development Build 015" not in html or "Final V52 hero spruce" not in html:
+              raise SystemExit("The published entry point is not the expected Build 015 site.")
+          index.write_text(html, encoding="utf-8")
+          PY
+
+          echo "Build 015 website payload:"
+          du -sh _site
+          find _site -maxdepth 2 -type f -printf '%P %s bytes\\n' | sort
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Build 015 site artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy Build 015 website
+        id: deployment
+        uses: actions/deploy-pages@v4
