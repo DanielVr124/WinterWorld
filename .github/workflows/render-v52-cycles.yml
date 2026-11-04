@@ -6,10 +6,15 @@ on:
       - render-v52-cycles
     paths:
       - render-v52-source.zip
+      - .github/workflows/render-v52-cycles.yml
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: winterworld-v52-cycles-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   render:
@@ -25,7 +30,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install geometry build dependencies
-        run: python -m pip install --upgrade numpy trimesh
+        run: python -m pip install --upgrade numpy scipy trimesh
+
+      - name: Verify geometry acceleration dependencies
+        run: |
+          python - <<'PY'
+          import numpy, scipy, trimesh
+          print(f"NumPy {numpy.__version__}")
+          print(f"SciPy {scipy.__version__}")
+          print(f"Trimesh {trimesh.__version__}")
+          PY
 
       - name: Verify and extract reproducible V52 source
         shell: bash
@@ -40,13 +54,13 @@ jobs:
 
       - name: Rebuild V47 base mesh
         working-directory: render-v52-source/base
-        run: python build_hero_spruce_v47.py
+        run: python -u build_hero_spruce_v47.py
 
       - name: Rebuild V52 geometry from V47 source
         working-directory: render-v52-source/v52
         env:
           WINTERWORLD_V47_BASE: ${{ github.workspace }}/render-v52-source/base
-        run: python build_hero_spruce_v52.py
+        run: python -u build_hero_spruce_v52.py
 
       - name: Download official Blender 5.2.3 LTS
         shell: bash
