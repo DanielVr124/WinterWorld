@@ -104,7 +104,7 @@ changelog = """# Build 015 — Final V52 Hero Spruce Integration
 ## Implemented
 - Integrated the final, Cycles-rendered V52 spruce asset into the playable WebGL2 forest as the near-path hero tree.
 - Converted the four authored GLB components (trunk bark, boughs, settled snow, and individual needles) into a compact indexed vertex-color mesh that matches Winter World's existing WebGL2 material pipeline.
-- Generated a game LOD with approximately 180k–450k triangles (the exact final count is recorded in src/hero_spruce_v52_stats.json) instead of shipping the 5.6-million-triangle source GLB directly to the real-time scene.
+- Generated a single-hero game LOD below 900k triangles (the exact final count is recorded in src/hero_spruce_v52_stats.json) instead of shipping the 5.6-million-triangle source GLB directly to the real-time scene.
 - Preserved V52's branch-to-snow contact geometry and per-vertex color variation through the LOD conversion.
 - Added a matching trunk collider and protected the hero tree's footprint from overlapping procedural trees and rocks.
 - Added V52 triangle-count reporting to F3 diagnostics.
