@@ -65,7 +65,7 @@ jobs:
           # Keep exactly six root-flare RNG calls, matching the original generator's
           # random-call count. This prevents unrelated branch/needle variation from
           # shifting while the root geometry itself is refined.
-          new_root = "\\n".join([
+          new_root = "\n".join([
               "    # Six exposed root flares blend into the trunk and reach the forest floor.",
               "    for k in range(6):",
               "        a=k*math.tau/6+rng.uniform(-.16,.16)",
@@ -76,11 +76,11 @@ jobs:
               "              np.array([dx*root_len,-.098,dz*root_len])]",
               "        trunk.add_tube(root,[.118,.061,.0075],'bark',8,seed+80+k,ridged=.10)",
               "",
-          ]) + "\\n"
+          ]) + "\n"
           s = s[:root_start] + new_root + s[root_end:]
 
           old_bough = "            boughs.add_tube([p0,p1,p2,p3],[base_r,base_r*.70,base_r*.39,.0065],'twig',8,branch_seed,ridged=.025)"
-          new_bough = "\\n".join([
+          new_bough = "\n".join([
               "            # Gentle basal swelling gives the primary bough a more convincing",
               "            # collar where it emerges from the trunk; the taper remains gradual.",
               "            boughs.add_tube([p0,p1,p2,p3],",
@@ -103,7 +103,7 @@ jobs:
           if len(note_lines) != 1:
               raise SystemExit("Could not uniquely locate the V52 stats note.")
           lines[note_lines[0]] = "    stats['notes']=" + repr(note)
-          s = "\\n".join(lines) + "\\n"
+          s = "\n".join(lines) + "\n"
 
           compile(s, str(path), "exec")
           path.write_text(s, encoding="utf-8")
