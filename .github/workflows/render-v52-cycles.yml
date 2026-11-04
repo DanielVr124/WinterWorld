@@ -5,7 +5,7 @@ on:
     branches:
       - render-v52-cycles
     paths:
-      - render-v52-source.tar.xz
+      - render-v52-source.zip
   workflow_dispatch:
 
 permissions:
@@ -31,9 +31,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s render-v52-source.tar.xz
-          echo "b42048ac159e4b8c29a4ca73b790000a28c43e2e422a68b7a6e2f3c4d8d8c29b  render-v52-source.tar.xz" | sha256sum --check -
-          tar -xJf render-v52-source.tar.xz
+          test -s render-v52-source.zip
+          echo "ca01fd9004e287a20c6640e2068bdbc2c8777d8f13301dc8b1264cc504dd7b72  render-v52-source.zip" | sha256sum --check -
+          unzip -q render-v52-source.zip
           test -s render-v52-source/base/build_hero_spruce_v47.py
           test -s render-v52-source/v52/build_hero_spruce_v52.py
           test -s render-v52-source/v52/render_cycles_v52.py
