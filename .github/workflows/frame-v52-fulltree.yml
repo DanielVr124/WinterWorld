@@ -91,9 +91,9 @@ jobs:
           replace_once(
               """                    boughs.add_tube([root,mid,tip],[r0,r0*.49,.0035],'twig',6,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.035)""",
               """                    # A compact fork collar softens the secondary-to-primary
-                      # junction without adding detached geometry or changing its reach.
-                      boughs.add_tube([root,mid,tip],[r0*1.22,r0*.58,.0035],
-                                      'twig',7,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.030)""",
+                          # junction without adding detached geometry or changing its reach.
+                          boughs.add_tube([root,mid,tip],[r0*1.22,r0*.58,.0035],
+                                          'twig',7,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.030)""",
               "secondary fork collar")
 
           replace_once(
