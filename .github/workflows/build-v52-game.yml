@@ -8,8 +8,6 @@ on:
       - .github/workflows/build-v52-game.yml
       - scripts/build_v52_game_lod.py
       - scripts/integrate_v52_game.py
-      - scripts/build_v52_game_lod.py
-      - scripts/integrate_v52_game.py
 
 permissions:
   contents: read
@@ -133,7 +131,7 @@ jobs:
           cd ../..
           cd work && zip -qr -9 ../WinterWorld_Playtest_Build016_V52_ConiferForest.zip WinterWorld_Prototype && cd ..
           unzip -tq WinterWorld_Playtest_Build016_V52_ConiferForest.zip
-          ls -lh WinterWorld_Playtest_Build016_V52_ConiferForest.zip work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json
+          ls -lh WinterWorld_Playtest_Build016_V52_ConiferForest.zip work/WinterWorld_Prototype/src/hero_spruce_v52_stats.json work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
 
       - name: Upload Build 016 and full-forest integration stats
         uses: actions/upload-artifact@v4
