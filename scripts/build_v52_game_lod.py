@@ -31,8 +31,8 @@ FOREST_COMPONENT_RATIOS = {
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_RANDOM_FACE_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 2.0,
-    "Spruce_Individual_Needles": 2.0,
+    "Spruce_Settled_Snow_Patches": 1.7,
+    "Spruce_Individual_Needles": 1.7,
 }
 
 
