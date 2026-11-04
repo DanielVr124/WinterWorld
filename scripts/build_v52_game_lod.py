@@ -110,10 +110,10 @@ for obj in objects:
     }
     print(f"{name}: {source_triangles:,} -> {output_triangles:,} triangles, {vertex_count:,} vertices")
 
-if not 180_000 <= total_output_triangles <= 450_000:
+if not 180_000 <= total_output_triangles <= 900_000:
     raise RuntimeError(
         f"Optimized V52 game mesh has {total_output_triangles:,} triangles; "
-        "expected 180,000–450,000 to balance detail and the existing GTX 1050 Ti target."
+        "expected 180,000–900,000 for one high-detail hero tree; background trees remain low-poly."
     )
 
 combined_vertices = []
