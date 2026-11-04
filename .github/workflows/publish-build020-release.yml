@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == '5a92a7c1e9162aeea2797f95970a9ff47fb5856c' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download the successful Build 020 artifact
