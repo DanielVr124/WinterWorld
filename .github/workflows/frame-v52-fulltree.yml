@@ -275,12 +275,12 @@ jobs:
               "render_to(scene, detail_camera, 'V52_Cycles_Bough_SnowContact_Closeup.png', 48, 1500, 1000)",
               "bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'Hero_Spruce_V52_Bough_SnowContact_Inspection.blend'))",
               "print('BOUGH_SNOW_CONTACT_INSPECTION_COMPLETE', flush=True)",
-          ]",
-          detail_code = "\\n".join(detail_lines)"
+          ]
+          detail_code = "\n".join(detail_lines)
           if "V52_Cycles_Bough_SnowContact_Closeup.png" not in source:
               if detail_marker not in source:
                   raise SystemExit("Could not find the end of the full-tree render before adding the bough inspection.")
-              source = source.replace(detail_marker, detail_marker + "\\n" + detail_code, 1)
+              source = source.replace(detail_marker, detail_marker + "\n" + detail_code, 1)
           path.write_text(source, encoding="utf-8")
           print("Applied Z-up camera, lights and horizontal floor; full tree target is computed from Blender world bounds.")
           PY
