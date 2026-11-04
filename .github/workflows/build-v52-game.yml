@@ -107,8 +107,8 @@ jobs:
 
           ## Fixed
           - Removed random per-face deletion that had fragmented snow patches and individual needles in repeated forest trees.
-          - The forest LOD now retains complete connected snow and needle islands.
-          - Increased repeated-tree bough detail while keeping a measured per-instance geometry budget.
+          - The forest LOD now retains an 18% selection of complete connected snow and needle islands from the already optimized source surfaces (up from 5% in Build 017).
+          - Increased repeated-tree bough detail to a 20% decimation ratio while keeping a measured per-instance geometry budget.
           - Preserved the V52 Blender Z-up to WebGL Y-up conversion and ground-root normalization.
 
           ## Implemented
@@ -124,10 +124,11 @@ jobs:
           - In-browser visual review and target-PC FPS remain pending user testing.
           """
           (game / "BUILD_018_CHANGELOG.md").write_text(changelog, encoding="utf-8")
+          (game / "BUILD_016_CHANGELOG.md").unlink(missing_ok=True)
 
           readme = """# Winter World — Development Build 018
 
-          A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 018 repairs the repeated V52 forest LOD by preserving complete snow patches and needle islands instead of randomly cutting their faces. The near-path showcase remains the high-detail V52 hero tree.
+          A Windows-friendly HTML/WebGL2 first-person winter-world prototype. Build 018 makes the repeated V52 forest trees much fuller: it retains substantially more complete snow patches and needle islands instead of randomly cutting their faces. The near-path showcase remains the high-detail V52 hero tree.
 
           ## Run the world
           1. Extract the ZIP.
@@ -147,8 +148,8 @@ jobs:
           - F3: performance and player diagnostics
 
           ## Build 018 — V52 Forest LOD Repair
-          - Preserves whole connected snow and needle islands in repeated V52 trees.
-          - Increases bough detail in the shared forest LOD.
+          - Preserves a higher-density 18% selection of whole connected snow and needle islands in repeated V52 trees.
+          - Increases bough detail and retains 18% of complete connected snow/needle islands in the shared forest LOD.
           - Retains the high-detail hero and the same V52 source for all other conifers.
           - Includes the automated test report, QA JSON, and actual Blender LOD comparison render.
           - In-browser visuals and target-PC FPS still need user review.
@@ -162,7 +163,7 @@ jobs:
           - **Current milestone:** M2 — Quality Benchmark
           - **Current sub-pass:** Shape-preserving V52 forest LOD repair
           - **Build 016 issue:** The repeated forest LOD was reduced by randomly deleting individual faces from dense snow and needle meshes. This fragmented the authored surfaces and caused non-hero trees to look broken.
-          - **Build 018 fix:** Complete connected snow and needle islands are sampled as units. The forest LOD retains intact authored pieces while remaining lighter than the full hero mesh.
+          - **Build 018 fix:** A substantially denser 18% selection of complete connected snow and needle islands is sampled as units. The repeated trees now retain far more of the V52 snow-and-needle coverage while remaining lighter than the hero mesh.
 
           ## Build 018 — Implemented
           - V52 Z-up to WebGL Y-up conversion and y=0 root normalization retained.
@@ -238,7 +239,7 @@ jobs:
               {name:'Blender Z-up to WebGL Y-up conversion',status:'PASS',details:stats.coordinate_conversion.position_and_normal_mapping},
               {name:'Tree orientation and matching height',status:'PASS',details:'Both LOD bounds are upright and height-matched'},
               {name:'Root snow skirt placement',status:'PASS',details:'Lowest vertex normalized to y=0'},
-              {name:'Intact snow and needle islands',status:'PASS',details:'Forest LOD uses deterministic whole-connected-island sampling'},
+              {name:'Higher-density snow and needle coverage',status:'PASS',details:'Forest LOD uses 18% whole-connected-island sampling'},
               {name:'All conifer placements use V52',status:'PASS',details:'No legacy procedural or cone fallback remains'},
               {name:'JavaScript syntax',status:'PASS'},
             ],
