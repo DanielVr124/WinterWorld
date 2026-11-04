@@ -6,10 +6,16 @@ on:
       - main
     paths:
       - WinterWorld_Playtest.zip
+  workflow_run:
+    workflows:
+      - Build Winter World 015 with final V52 hero spruce
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -19,24 +25,45 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Download Build 015 artifact
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build015-V52-HeroSpruce
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
       - name: Check playtest archive
         shell: bash
         run: |
-          if [[ ! -s "WinterWorld_Playtest.zip" ]]; then
-            echo "::error::WinterWorld_Playtest.zip is missing. Upload the playtest ZIP to the repository root."
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            ARCHIVE="artifacts/WinterWorld_Playtest_Build015_V52.zip"
+          else
+            ARCHIVE="WinterWorld_Playtest.zip"
+          fi
+          if [[ ! -s "$ARCHIVE" ]]; then
+            echo "::error::Required Winter World playtest archive is missing: $ARCHIVE"
             exit 1
           fi
 
       - name: Extract and validate game
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p package _site
-          unzip -q WinterWorld_Playtest.zip -d package
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            unzip -q artifacts/WinterWorld_Playtest_Build015_V52.zip -d package
+          else
+            unzip -q WinterWorld_Playtest.zip -d package
+          fi
 
           GAME_DIR="package/WinterWorld_Prototype"
           for file in index.html style.css src/main.js src/sakura_mesh_data.js; do
@@ -45,6 +72,14 @@ jobs:
               exit 1
             fi
           done
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            for file in src/hero_spruce_v52_data.js src/hero_spruce_v52_stats.json; do
+              if [[ ! -s "$GAME_DIR/$file" ]]; then
+                echo "::error::Build 015 asset is missing: $GAME_DIR/$file"
+                exit 1
+              fi
+            done
+          fi
 
           cp -a "$GAME_DIR/." _site/
           touch _site/.nojekyll
@@ -62,6 +97,8 @@ jobs:
               'src="src/sakura_mesh_data.js"': f'src="src/sakura_mesh_data.js?v={version}"',
               'src="src/main.js"': f'src="src/main.js?v={version}"',
           }
+          if 'src="src/hero_spruce_v52_data.js"' in html:
+              replacements['src="src/hero_spruce_v52_data.js"'] = f'src="src/hero_spruce_v52_data.js?v={version}"'
           for old, new in replacements.items():
               if old not in html:
                   raise SystemExit(f"Expected cacheable asset reference not found: {old}")
