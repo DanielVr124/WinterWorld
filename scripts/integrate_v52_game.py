@@ -70,17 +70,15 @@ main = replace_once(
     "legacy cone mesh",
 )
 
-old_tree = """  function tree(x,z,sc=1,variant=0,addCollider=true){
-    // Keep the denser M2 vegetation clear of the existing cabin and doorway.
-    if(Math.abs(x-5)<7.2&&Math.abs(z+24)<8.0)return;
-    if(inSakuraGroveClearance(x,z))return;
-    if(nearHeroSpruceV52(x,z))return;
-    if(addCollider)addCircleCollider(x,z,.31*sc,'tree trunk');
-    const y=terrainHeight(x,z),species=variant%firSpecies.length,spin=rng(Math.round((x+75)*91+(z+70)*17))*Math.PI*2;
-    const tint=.92+rng(Math.round(x*13+z*7))* .12;
-    objects.push({mesh:firSpecies[species],model:modelMatrix([x,y,z],[0,spin,0],[sc,sc,sc]),color:[tint,tint*.99,tint*1.015],emissive:0});
-  }
-"""
+# Replace the entire old conifer placement function by source boundaries.
+# Build 014 has no hero-clearance line yet, so matching its whole body as a
+# literal string is brittle; the function boundary is stable across the builds.
+tree_start = main.find("  function tree(")
+if tree_start < 0:
+    raise RuntimeError("Conifer tree placement function was not found")
+tree_end = main.find("  let seed=", tree_start)
+if tree_end < 0:
+    raise RuntimeError("Could not find the forest placement loop after tree()")
 new_tree = """  function tree(x,z,sc=1,variant=0,addCollider=true){
     // Keep the denser M2 vegetation clear of the existing cabin and doorway.
     if(Math.abs(x-5)<7.2&&Math.abs(z+24)<8.0)return;
@@ -90,7 +88,7 @@ new_tree = """  function tree(x,z,sc=1,variant=0,addCollider=true){
     addV52Conifer(x,z,sc,seed,addCollider);
   }
 """
-main = replace_once(main, old_tree, new_tree, "legacy conifer placement")
+main = main[:tree_start] + new_tree + main[tree_end:]
 
 old_ridge = """  for(let i=0;i<12;i++){const x=(i-5.5)*18,z=-67-rng(i+75)*20,h=10+rng(i+43)*16;add(pineCone,[x,h*.08,z],[11,h,11],[.11,.18,.26]);}
   for(let i=0;i<28;i++){
@@ -111,9 +109,6 @@ new_ridge = """  // Distant ridgeline conifers use the same V52-derived forest L
 main = replace_once(main, old_ridge, new_ridge, "distant conifer silhouettes")
 
 
-
-marker = "    if(inSakuraGroveClearance(x,z))return;"
-main = replace_once(main, marker, marker + "\n    if(nearHeroSpruceV52(x,z))return;", "procedural-tree clearance")
 
 marker = "  // First Japanese cherry-blossom grove: broad natural crowns, dark branching,"
 hero_object = """  // One final V52 hero spruce anchors the near path. The shared procedural
