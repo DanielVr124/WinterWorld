@@ -1,4 +1,4 @@
-name: Frame complete Winter World V52 spruce
+name: Final polish and frame Winter World V52 spruce
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - name: Check out naturalized V52 source
+      - name: Check out V52 source for final polish
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -40,6 +40,71 @@ jobs:
           unzip -q render-v52-source.zip
           test -s render-v52-source/v52/build_hero_spruce_v52.py
           test -s render-v52-source/v52/render_cycles_v52.py
+
+      - name: Polish primary branch collars and ground-contact root crown
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("render-v52-source/v52/build_hero_spruce_v52.py")
+          s = path.read_text(encoding="utf-8")
+
+          def replace_once(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit(f"Missing exact source marker: {label}")
+              s = s.replace(old, new, 1)
+
+          replace_once(
+              """    # Slightly exposed root flares at the trunk base.
+              for k in range(6):
+                  a=k*math.tau/6+rng.uniform(-.18,.18)
+                  dx,dz=math.cos(a),math.sin(a)
+                  root_len=rng.uniform(.42,.66)
+                  root=[np.array([0,.12,0]),np.array([dx*root_len*.48,.05,dz*root_len*.48]),np.array([dx*root_len,-.025,dz*root_len])]
+                  trunk.add_tube(root,[.105,.053,.007],'bark',7,seed+80+k,ridged=.10)
+          """,
+              """    # Exposed root flares form a grounded, irregular root crown rather than
+              # stopping short above the forest floor. Eight varied buttress roots blend
+              # into the trunk and taper to fine tips at ground contact.
+              for k in range(8):
+                  a=k*math.tau/8+rng.uniform(-.16,.16)
+                  dx,dz=math.cos(a),math.sin(a)
+                  root_len=rng.uniform(.48,.72)
+                  root=[np.array([0,.14,0]),
+                        np.array([dx*root_len*.48,.025,dz*root_len*.48]),
+                        np.array([dx*root_len,-.098,dz*root_len])]
+                  trunk.add_tube(root,[.118,.061,.0075],'bark',8,seed+80+k,ridged=.10)
+          """,
+              "root flare block")
+
+          replace_once(
+              """            boughs.add_tube([p0,p1,p2,p3],[base_r,base_r*.70,base_r*.39,.0065],'twig',8,branch_seed,ridged=.025)""",
+              """            # Gentle basal swelling gives the primary bough a more convincing
+              # collar where it emerges from the trunk; the taper remains gradual.
+              boughs.add_tube([p0,p1,p2,p3],
+                              [base_r*1.28,base_r*.84,base_r*.39,.0065],
+                              'twig',10,branch_seed,ridged=.022)""",
+              "primary bough collar")
+
+          replace_once(
+              """                    boughs.add_tube([root,mid,tip],[r0,r0*.49,.0035],'twig',6,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.035)""",
+              """                    # A compact fork collar softens the secondary-to-primary
+                      # junction without adding detached geometry or changing its reach.
+                      boughs.add_tube([root,mid,tip],[r0*1.22,r0*.58,.0035],
+                                      'twig',7,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.030)""",
+              "secondary fork collar")
+
+          replace_once(
+              """    stats['notes']='V52 natural-snow pass: preserves the approved V47 branch silhouette and individual-needle detail, but replaces repeated short snow caps with longer, connected, feather-edged mantles following primary boughs and secondary fans. Smaller tertiary deposits are less frequent and thinner, with broader low-frequency edge drift and a smoother rounded cross-section. Subtle lower-bough sag, needle hue variation, and the Blender PBR material pass are retained. No detached snow blobs are emitted.'""",
+              """    stats['notes']='V52 final polish: preserves the approved crown silhouette, individual-needle detail and connected feather-edged snow mantles. Primary bough roots receive a restrained basal collar, secondary forks receive subtle blended collars, and the eight varied root flares now reach the forest floor. Branch reach, crown proportions, snow coverage and needle distribution remain unchanged. No detached snow blobs are emitted.'""",
+              "final build notes")
+
+          compile(s, str(path), "exec")
+          path.write_text(s, encoding="utf-8")
+          print("Final geometry polish applied; source syntax check passed.")
+          PY
 
       - name: Correct Blender Z-up scene framing for the whole tree
         run: |
@@ -111,7 +176,7 @@ jobs:
           print("Applied Z-up camera, lights and horizontal floor; full tree target is computed from Blender world bounds.")
           PY
 
-      - name: Rebuild V47 and naturalized V52 assets
+      - name: Rebuild V47 and final-polished V52 assets
         shell: bash
         run: |
           set -euo pipefail
@@ -161,13 +226,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add render-v52-source.zip
-          git commit -m "Correct V52 Blender Z-up full-tree framing"
+          git commit -m "Polish V52 branch collars and grounded roots; frame final tree"
           git push origin HEAD:render-v52-cycles
 
       - name: Upload framed preview and native scene
         uses: actions/upload-artifact@v4
         with:
-          name: WinterWorld-V52-FullTree-Framed
+          name: WinterWorld-V52-Final-Polish
           path: |
             render-v52-source/v52/cycles_renders/V52_Cycles_FullTree_ZUp_Framed_40mm.png
             render-v52-source/v52/Hero_Spruce_V52_ZUpFramed_40mm.blend
