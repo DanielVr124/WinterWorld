@@ -1,32 +1,44 @@
 # Winter World
 
-A public, browser-playable WebGL2 exploration prototype.
+A public, browser-playable WebGL2 first-person winter-world prototype.
 
-**Current playtest package:** Development Build 016 — Upright V52 Conifer Forest  
-**Live website:** https://danielvr124.github.io/WinterWorld/  
-**Build 016 workflow:** https://github.com/DanielVr124/WinterWorld/actions/runs/41827324853
+**Current build:** Development Build 017 — V52 Forest LOD Repair  
+**Live playtest:** https://danielvr124.github.io/WinterWorld/  
+**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-017-v52-forest-lod-repair
 
-## Build 016
+## Build 017 — Shape-preserving V52 conifer forest
 
-- Corrects the V52 spruce's Blender Z-up to WebGL Y-up coordinate conversion, including vertex normals.
-- Normalizes the bottom of the snow-root geometry to the terrain.
-- Replaces every conifer in the playable forest with the final V52 spruce model.
-- Uses one high-detail V52 hero tree near the path and a shared lightweight V52-derived LOD for the rest of the forest, including the distant ridgeline.
-- Preserves the sakura grove, terrain, path, cabin, rocks, lanterns, controls, collision behavior, fog, snowfall, settings, and world layout.
-- Build-time checks validate upright bounds, both mesh buffers, index ranges, triangle budgets, JavaScript syntax, and ZIP integrity.
+Build 016's repeated forest trees looked broken because the low-detail generator removed random individual faces from the dense snow and needle components. Build 017 replaces that with whole connected-island sampling, so retained snow patches and needles stay intact. The high-detail hero tree is kept, and all repeated conifers still come from the same V52 spruce source.
 
-## Automated publishing
+## Build downloads and reports
 
-The V52 build pipeline runs on the `render-v52-cycles` branch through `.github/workflows/build-v52-game.yml`. A successful build uploads a versioned artifact to its Actions run.
+The latest GitHub Release contains:
+- Playable Build 017 ZIP.
+- Automated test report (Markdown).
+- Machine-readable QA report (JSON).
+- Blender render comparing the actual exported hero and forest LODs.
+- V52 source renders and geometry stats.
 
-The default-branch workflow at `.github/workflows/deploy-pages.yml` downloads that exact artifact, validates its game files, and deploys it to the same GitHub Pages URL. Asset URLs receive a unique deployment-run query so browsers fetch the latest files after each publish.
+**Important test distinction:** automated geometry, buffer, syntax, and archive checks are run in CI. In-browser appearance and target-PC FPS remain pending hands-on review; they are not represented as passed tests.
 
-The approved playtest package is also published as a [Build 016 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-016-v52-conifer-forest) with its ZIP, mesh statistics, changelog, and preview renders.
+## Run locally
 
-## Local play
+1. Download and extract the playtest ZIP.
+2. Open the `WinterWorld_Prototype` folder.
+3. Open `index.html` in Chrome or Edge.
+4. If local-file loading is blocked, run `py -m http.server 8000` in that folder and open `http://127.0.0.1:8000/`.
 
-Extract the playtest ZIP, open the `WinterWorld_Prototype` folder, and serve it over HTTP (for example, `python -m http.server 8000`). Then open `http://localhost:8000/` in a current Chrome or Edge browser. Do not open `index.html` directly as a `file://` URL.
+## Controls
 
-## Public access
+- `W`, `A`, `S`, `D` or arrow keys: move
+- Mouse: look around
+- `Shift`: move faster
+- `Esc`: release the mouse / close settings
+- Click the scene: capture the mouse
+- `E`: development note
+- `F3`: performance and player diagnostics
 
-This repository and its GitHub Pages website are public. Game files deployed to Pages are therefore publicly downloadable. Do not put credentials, private information, or unapproved experimental builds in the published archive.
+## Build history
+
+- **Build 016:** Corrected the V52 tree's Blender Z-up to WebGL Y-up conversion, but its repeated-forest LOD was too aggressively reduced and damaged the visible snow/needle surfaces.
+- **Build 017:** Repairs the forest LOD by retaining complete connected snow/needle islands and restores published build test reports plus an actual LOD comparison render.
