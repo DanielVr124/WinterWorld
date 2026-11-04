@@ -2,32 +2,34 @@
 
 A public, browser-playable WebGL2 first-person winter-world prototype.
 
-**Current build:** Development Build 019 — Distance-Based V52 LODs  
+**Current build:** Development Build 020 — V52 Performance LODs  
 **Live playtest:** https://danielvr124.github.io/WinterWorld/  
-**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-019-v52-distance-lods
+**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-020-v52-performance-lod
 
-## Build 019 — Distance-based V52 conifer detail
+## Build 020 — V52 forest performance fix
 
-Build 016's repeated forest trees looked broken because the forest mesh had individual snow and needle faces removed at random. Build 018 improved this by keeping connected geometry islands, but the reduction was still too aggressive because component decimation and island selection compounded.
+Build 019 rendered far too much geometry at once. Its ordinary trees could use the 834,798-triangle hero mesh near the player, the 577,808-triangle medium mesh, or the 241,964-triangle far mesh. Instancing reduced draw calls but did not reduce the triangle workload.
 
-Build 019 uses three separate V52 meshes, each generated independently from the original V52 source:
+Build 020 keeps the full-detail mesh on the single showcase tree and uses smaller V52-derived meshes for every other conifer:
 
-- **Near:** full-detail hero mesh, 834,798 triangles, selected within 26m.
-- **Medium:** 577,808 triangles, retaining 70% of the optimized complete snow/needle islands, selected from 26m to 78m.
-- **Far:** 241,964 triangles, retaining 28% of the optimized complete snow/needle islands, selected at 78m and beyond and on small/distant trees.
+- **Showcase:** 834,798 triangles.
+- **Ordinary medium trees:** 54,812 triangles each, used within 68m.
+- **Far trees:** 21,534 triangles each, used beyond 68m and for small understory/ridgeline trees.
 
-All conifers use the same V52 source model. The runtime re-batches the scene as the player moves and exposes near/mid/far counts in the F3 diagnostics.
+The meshes are generated independently from the original V52 source. The runtime now rebuilds GPU instance buffers only when a tree crosses an LOD boundary, not during ordinary movement.
+
+Based on the current forest placements at the starting viewpoint, this reduces the estimated tree workload from about 67.3 million to 6.2 million triangles per frame (roughly 10.9× fewer). This is a geometry estimate, not a measured FPS result.
 
 ## Build downloads and reports
 
-The [Build 019 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-019-v52-distance-lods) includes:
-- Playable Build 019 ZIP.
+The [Build 020 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-020-v52-performance-lod) includes:
+- Playable Build 020 ZIP.
 - Automated test report (Markdown).
 - Machine-readable QA results (JSON).
-- Blender comparison render of the actual near, medium, and far mesh buffers.
+- Blender comparison render of the actual showcase, medium, and far mesh buffers.
 - V52 source renders, geometry stats, and changelog.
 
-**Test distinction:** automated geometry, buffer, orientation, distance-LOD wiring, JavaScript, and archive checks passed in CI. In-browser visual confirmation and target-PC FPS remain pending hands-on review; they are not represented as passed tests.
+**Test distinction:** the automated geometry, buffer, orientation, LOD wiring, JavaScript, and ZIP checks passed in CI. Actual frame rate and in-browser visual quality on target hardware still need hands-on review.
 
 ## Run locally
 
@@ -44,10 +46,11 @@ The [Build 019 GitHub Release](https://github.com/DanielVr124/WinterWorld/releas
 - `Esc`: release the mouse / close settings
 - Click the scene: capture the mouse
 - `E`: development note
-- `F3`: performance, player, and live V52 LOD diagnostics
+- `F3`: performance, player, submitted-triangle, and live V52 LOD diagnostics
 
 ## Build history
 
-- **Build 016:** Corrected V52 orientation, but its repeated-tree mesh was too aggressively reduced.
-- **Build 017–018:** Tried connected-island sampling; reports exposed that the repeated trees remained too sparse.
-- **Build 019:** Adds distance-based full, medium, and far V52 detail levels and restores published build reports.
+- **Build 016:** Corrected V52 orientation, but repeated-tree meshes were too aggressively reduced.
+- **Build 017–018:** Tried connected-island sampling; repeated trees remained too sparse.
+- **Build 019:** Added distance-based detail, but left ordinary trees far too expensive.
+- **Build 020:** Keeps the full hero mesh on the showcase tree, reduces ordinary tree meshes to practical budgets, and removes unnecessary GPU-buffer uploads while walking.
