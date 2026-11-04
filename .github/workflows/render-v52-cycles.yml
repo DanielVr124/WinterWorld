@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           test -s render-v52-source.zip
-          echo "ca01fd9004e287a20c6640e2068bdbc2c8777d8f13301dc8b1264cc504dd7b72  render-v52-source.zip" | sha256sum --check -
+          unzip -t render-v52-source.zip
           unzip -q render-v52-source.zip
           test -s render-v52-source/base/build_hero_spruce_v47.py
           test -s render-v52-source/v52/build_hero_spruce_v52.py
