@@ -1,0 +1,43 @@
+name: Inspect Winter World Build 014 source for V52 integration
+
+on:
+  push:
+    branches:
+      - render-v52-cycles
+    paths:
+      - .github/workflows/inspect-game-source.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+      - name: Extract Build 014 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p inspect
+          unzip -q WinterWorld_Playtest.zip -d inspect/game
+          find inspect/game -maxdepth 5 -type f -printf '%P\n' | sort > inspect/file-list.txt
+          echo '--- source file inventory ---'
+          cat inspect/file-list.txt
+          echo '--- candidate source paths ---'
+          find inspect/game -type f \( -name '*.js' -o -name '*.json' -o -name '*.html' -o -name '*.css' \) -printf '%p\n' | sort
+          echo '--- tree and model references ---'
+          grep -RniE 'spruce|pine|tree|forest|GLTF|glb|gltf|sakura_mesh' inspect/game --include='*.js' --include='*.json' --include='*.html' --include='*.css' | head -n 500 > inspect/tree-references.txt || true
+          cat inspect/tree-references.txt
+      - name: Package editable game source for inspection
+        run: |
+          cd inspect
+          zip -qr ../WinterWorld-Build014-Source-Inspect.zip game file-list.txt tree-references.txt
+      - name: Upload inspection artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-Build014-Source-Inspect
+          path: WinterWorld-Build014-Source-Inspect.zip
+          if-no-files-found: error
+          retention-days: 7
