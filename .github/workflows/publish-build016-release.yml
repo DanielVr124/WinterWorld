@@ -1,0 +1,71 @@
+name: Publish Winter World Development Build 016 Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-build016-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the successful Build 016 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build016-V52-ConiferForest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 41827324853
+          path: artifacts
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          find_one() {
+            local name="$1"
+            local found
+            found="$(find artifacts -type f -name "$name" -print -quit)"
+            if [[ -z "$found" || ! -s "$found" ]]; then
+              echo "::error::Required Build 016 release asset is missing: $name"
+              exit 1
+            fi
+            cp "$found" "release-assets/$name"
+          }
+
+          find_one "WinterWorld_Playtest_Build016_V52_ConiferForest.zip"
+          find_one "hero_spruce_v52_stats.json"
+          find_one "BUILD_016_CHANGELOG.md"
+          find_one "V52_Cycles_FullTree_ZUp_Framed_40mm.png"
+          find_one "V52_Cycles_Bough_SnowContact_Closeup.png"
+
+          unzip -tq release-assets/WinterWorld_Playtest_Build016_V52_ConiferForest.zip
+          ls -lh release-assets/
+
+      - name: Create or update the numbered GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="winter-world-build-016-v52-conifer-forest"
+          TITLE="Winter World Development Build 016 — Upright V52 Conifer Forest"
+          TARGET="d9f96cdb2b839da3dfb3c07219462843b94d10a9"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --title "$TITLE" \
+              --notes-file release-assets/BUILD_016_CHANGELOG.md \
+              --target "$TARGET"
+          fi
