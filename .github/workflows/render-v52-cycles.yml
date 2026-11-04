@@ -6,7 +6,7 @@ on:
       - render-v52-cycles
     paths:
       - .github/workflows/render-v52-cycles.yml
-      - render-v52-source.zip
+      - render-v52-source.tar.xz
 
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
         run: python -m pip install --upgrade numpy trimesh
 
       - name: Extract reproducible V52 source
-        run: unzip -q render-v52-source.zip -d .
+        run: tar -xJf render-v52-source.tar.xz
 
       - name: Rebuild V47 base mesh
         working-directory: render-v52-source/base
