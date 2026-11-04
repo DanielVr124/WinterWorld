@@ -9,6 +9,7 @@ on:
   workflow_run:
     workflows:
       - Build Winter World 015 with final V52 hero spruce
+      - Build Winter World 016 with upright V52 conifer forest
     types:
       - completed
   workflow_dispatch:
@@ -37,7 +38,7 @@ jobs:
         if: env.USE_BUILD_015 == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: WinterWorld-Build015-V52-HeroSpruce
+          name: ${{ github.event.workflow_run.name == 'Build Winter World 016 with upright V52 conifer forest' && 'WinterWorld-Build016-V52-ConiferForest' || 'WinterWorld-Build015-V52-HeroSpruce' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
@@ -47,7 +48,7 @@ jobs:
         shell: bash
         run: |
           if [[ "$USE_BUILD_015" == "true" ]]; then
-            ARCHIVE="artifacts/WinterWorld_Playtest_Build015_V52.zip"
+            ARCHIVE="artifacts/$BUILD_ARCHIVE"
           else
             ARCHIVE="WinterWorld_Playtest.zip"
           fi
@@ -81,6 +82,14 @@ jobs:
                 exit 1
               fi
             done
+            if [[ "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build016_V52_ConiferForest.zip" ]]; then
+              for file in src/forest_spruce_v52_data.js; do
+                if [[ ! -s "$GAME_DIR/$file" ]]; then
+                  echo "::error::Build 016 asset is missing: $GAME_DIR/$file"
+                  exit 1
+                fi
+              done
+            fi
           fi
 
           cp -a "$GAME_DIR/." _site/
@@ -101,6 +110,8 @@ jobs:
           }
           if 'src="src/hero_spruce_v52_data.js"' in html:
               replacements['src="src/hero_spruce_v52_data.js"'] = f'src="src/hero_spruce_v52_data.js?v={version}"'
+          if 'src="src/forest_spruce_v52_data.js"' in html:
+              replacements['src="src/forest_spruce_v52_data.js"'] = f'src="src/forest_spruce_v52_data.js?v={version}"'
           for old, new in replacements.items():
               if old not in html:
                   raise SystemExit(f"Expected cacheable asset reference not found: {old}")
