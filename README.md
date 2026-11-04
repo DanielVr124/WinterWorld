@@ -2,24 +2,32 @@
 
 A public, browser-playable WebGL2 first-person winter-world prototype.
 
-**Current build:** Development Build 017 — V52 Forest LOD Repair  
+**Current build:** Development Build 019 — Distance-Based V52 LODs  
 **Live playtest:** https://danielvr124.github.io/WinterWorld/  
-**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-017-v52-forest-lod-repair
+**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-019-v52-distance-lods
 
-## Build 017 — Shape-preserving V52 conifer forest
+## Build 019 — Distance-based V52 conifer detail
 
-Build 016's repeated forest trees looked broken because the low-detail generator removed random individual faces from the dense snow and needle components. Build 017 replaces that with whole connected-island sampling, so retained snow patches and needles stay intact. The high-detail hero tree is kept, and all repeated conifers still come from the same V52 spruce source.
+Build 016's repeated forest trees looked broken because the forest mesh had individual snow and needle faces removed at random. Build 018 improved this by keeping connected geometry islands, but the reduction was still too aggressive because component decimation and island selection compounded.
+
+Build 019 uses three separate V52 meshes, each generated independently from the original V52 source:
+
+- **Near:** full-detail hero mesh, 834,798 triangles, selected within 26m.
+- **Medium:** 577,808 triangles, retaining 70% of the optimized complete snow/needle islands, selected from 26m to 78m.
+- **Far:** 241,964 triangles, retaining 28% of the optimized complete snow/needle islands, selected at 78m and beyond and on small/distant trees.
+
+All conifers use the same V52 source model. The runtime re-batches the scene as the player moves and exposes near/mid/far counts in the F3 diagnostics.
 
 ## Build downloads and reports
 
-The latest GitHub Release contains:
-- Playable Build 017 ZIP.
+The [Build 019 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-019-v52-distance-lods) includes:
+- Playable Build 019 ZIP.
 - Automated test report (Markdown).
-- Machine-readable QA report (JSON).
-- Blender render comparing the actual exported hero and forest LODs.
-- V52 source renders and geometry stats.
+- Machine-readable QA results (JSON).
+- Blender comparison render of the actual near, medium, and far mesh buffers.
+- V52 source renders, geometry stats, and changelog.
 
-**Important test distinction:** automated geometry, buffer, syntax, and archive checks are run in CI. In-browser appearance and target-PC FPS remain pending hands-on review; they are not represented as passed tests.
+**Test distinction:** automated geometry, buffer, orientation, distance-LOD wiring, JavaScript, and archive checks passed in CI. In-browser visual confirmation and target-PC FPS remain pending hands-on review; they are not represented as passed tests.
 
 ## Run locally
 
@@ -36,9 +44,10 @@ The latest GitHub Release contains:
 - `Esc`: release the mouse / close settings
 - Click the scene: capture the mouse
 - `E`: development note
-- `F3`: performance and player diagnostics
+- `F3`: performance, player, and live V52 LOD diagnostics
 
 ## Build history
 
-- **Build 016:** Corrected the V52 tree's Blender Z-up to WebGL Y-up conversion, but its repeated-forest LOD was too aggressively reduced and damaged the visible snow/needle surfaces.
-- **Build 017:** Repairs the forest LOD by retaining complete connected snow/needle islands and restores published build test reports plus an actual LOD comparison render.
+- **Build 016:** Corrected V52 orientation, but its repeated-tree mesh was too aggressively reduced.
+- **Build 017–018:** Tried connected-island sampling; reports exposed that the repeated trees remained too sparse.
+- **Build 019:** Adds distance-based full, medium, and far V52 detail levels and restores published build reports.
