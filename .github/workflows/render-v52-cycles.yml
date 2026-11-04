@@ -5,8 +5,8 @@ on:
     branches:
       - render-v52-cycles
     paths:
-      - .github/workflows/render-v52-cycles.yml
-      - render-v52-source.tar.xz.part06
+      - render-v52-source.tar.xz
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,11 +27,11 @@ jobs:
       - name: Install geometry build dependencies
         run: python -m pip install --upgrade numpy trimesh
 
-      - name: Reconstruct, verify and extract V52 source
+      - name: Verify and extract reproducible V52 source
         shell: bash
         run: |
           set -euo pipefail
-          cat render-v52-source.tar.xz.part0{1,2,3,4,5,6} | base64 --decode > render-v52-source.tar.xz
+          test -s render-v52-source.tar.xz
           echo "60b8335e47a81ec3d797108d8c946c3ba51ad6199f73978391cb94872e2ce92  render-v52-source.tar.xz" | sha256sum --check -
           tar -xJf render-v52-source.tar.xz
           test -s render-v52-source/base/build_hero_spruce_v47.py
