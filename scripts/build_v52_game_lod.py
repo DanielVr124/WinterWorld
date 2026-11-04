@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import random
+import re
 
 import bmesh
 import bpy
@@ -19,6 +20,7 @@ input_glb = env_required("V52_INPUT_GLB")
 output_hero_js = env_required("V52_OUTPUT_HERO_JS")
 output_forest_js = env_required("V52_OUTPUT_FOREST_JS")
 output_stats = env_required("V52_OUTPUT_STATS")
+output_preview = env_required("V52_OUTPUT_PREVIEW")
 
 COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 1.0,
@@ -333,3 +335,112 @@ print(
     f"forest {forest_stats['game_triangles']:,} triangles; "
     f"upright height {hero_stats['bounds_m']['height']:.3f} m."
 )
+
+def render_lod_comparison_preview(hero_js, forest_js, output_png):
+    """Render the exported hero and intact-island forest LOD buffers side-by-side."""
+    def load_buffers(path):
+        with open(path, "r", encoding="utf-8") as handle:
+            source = handle.read()
+        vertex_match = re.search(r'vertices: "([A-Za-z0-9+/=]+)"', source)
+        index_match = re.search(r'indices: "([A-Za-z0-9+/=]+)"', source)
+        if not vertex_match or not index_match:
+            raise RuntimeError(f"Could not read mesh buffers from {path}")
+        vertices = np.frombuffer(base64.b64decode(vertex_match.group(1)), dtype="<f4").reshape(-1, 9)
+        indices = np.frombuffer(base64.b64decode(index_match.group(1)), dtype="<u4").reshape(-1, 3)
+        return vertices, indices
+
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    def make_preview_mesh(label, path):
+        vertices, indices = load_buffers(path)
+        mesh = bpy.data.meshes.new(label + " preview mesh")
+        mesh.from_pydata(vertices[:, :3].tolist(), [], indices.tolist())
+        mesh.update()
+        colors = mesh.color_attributes.new(name="V52Color", type="FLOAT_COLOR", domain="POINT")
+        rgba = np.column_stack((vertices[:, 6:9], np.ones(len(vertices), dtype=np.float32))).astype(np.float32)
+        colors.data.foreach_set("color", rgba.reshape(-1))
+        try:
+            mesh.normals_split_custom_set_from_vertices(vertices[:, 3:6].tolist())
+        except Exception:
+            pass
+        for polygon in mesh.polygons:
+            polygon.use_smooth = True
+        material = bpy.data.materials.new(label + " vertex color material")
+        material.use_nodes = True
+        shader = material.node_tree.nodes.get("Principled BSDF")
+        vertex_color = material.node_tree.nodes.new("ShaderNodeVertexColor")
+        vertex_color.layer_name = "V52Color"
+        material.node_tree.links.new(vertex_color.outputs["Color"], shader.inputs["Base Color"])
+        shader.inputs["Roughness"].default_value = 0.82
+        mesh.materials.append(material)
+        return mesh
+
+    hero_mesh = make_preview_mesh("V52 Hero", hero_js)
+    forest_mesh = make_preview_mesh("V52 Forest LOD", forest_js)
+    for label, mesh, x, scale in [
+        ("Hero reference", hero_mesh, -5.0, 1.0),
+        ("Forest LOD", forest_mesh, 5.0, 1.0),
+        ("Forest LOD instance", forest_mesh, 14.0, 0.82),
+    ]:
+        obj = bpy.data.objects.new(label, mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        obj.location = (x, 0.02, 0.0)
+        obj.scale = (scale, scale, scale)
+
+    ground_mesh = bpy.data.meshes.new("preview snow ground")
+    ground_mesh.from_pydata(
+        [(-24, 0, -18), (-24, 0, 18), (24, 0, 18), (24, 0, -18)],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    ground_mesh.update()
+    ground = bpy.data.objects.new("preview snow ground", ground_mesh)
+    bpy.context.scene.collection.objects.link(ground)
+    ground_material = bpy.data.materials.new("preview snow")
+    ground_material.diffuse_color = (0.68, 0.76, 0.86, 1.0)
+    ground.data.materials.append(ground_material)
+
+    from mathutils import Vector
+    def aim(obj, point):
+        direction = Vector(point) - obj.location
+        obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+
+    bpy.ops.object.camera_add(location=(13.5, 9.5, 24.0))
+    camera = bpy.context.object
+    aim(camera, (3.6, 4.0, 0.0))
+    camera.data.type = "ORTHO"
+    camera.data.ortho_scale = 29.0
+    bpy.context.scene.camera = camera
+
+    bpy.ops.object.light_add(type="AREA", location=(0.0, 13.0, 8.0))
+    key = bpy.context.object
+    key.data.energy = 2600
+    key.data.shape = "DISK"
+    key.data.size = 10
+    aim(key, (0.0, 3.0, 0.0))
+    bpy.ops.object.light_add(type="AREA", location=(12.0, 9.0, -8.0))
+    fill = bpy.context.object
+    fill.data.energy = 1500
+    fill.data.size = 8
+    aim(fill, (4.0, 3.0, 0.0))
+
+    scene = bpy.context.scene
+    world = bpy.data.worlds.new("V52 preview world")
+    scene.world = world
+    world.color = (0.12, 0.16, 0.22)
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 16
+    scene.cycles.use_denoising = True
+    scene.render.resolution_x = 1800
+    scene.render.resolution_y = 1100
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    os.makedirs(os.path.dirname(output_png), exist_ok=True)
+    scene.render.filepath = output_png
+    bpy.ops.render.render(write_still=True)
+    if not os.path.isfile(output_png) or os.path.getsize(output_png) < 50_000:
+        raise RuntimeError("The Build 017 V52 LOD comparison preview was not rendered.")
+    print(f"Rendered actual V52 hero/forest LOD comparison: {output_png}")
+
+
+render_lod_comparison_preview(output_hero_js, output_forest_js, output_preview)
