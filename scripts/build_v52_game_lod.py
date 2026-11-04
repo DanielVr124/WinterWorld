@@ -26,10 +26,36 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.055,
-    "Spruce_Settled_Snow_Patches": 0.0007,
-    "Spruce_Individual_Needles": 0.0035,
+    "Spruce_Primary_Secondary_Boughs": 0.03,
+    "Spruce_Settled_Snow_Patches": 0.0045,
+    "Spruce_Individual_Needles": 0.03,
 }
+FOREST_RANDOM_FACE_KEEP_PERCENT = {
+    "Spruce_Settled_Snow_Patches": 2.0,
+    "Spruce_Individual_Needles": 2.0,
+}
+
+
+def keep_distributed_face_sample(obj, keep_percent, seed):
+    # These V52 components contain many tiny disconnected snow/needle pieces.
+    # Collapse decimation cannot reduce those islands below their per-piece floor.
+    # Keep a deterministic, evenly distributed random face sample for the forest
+    # LOD; the full hero LOD retains every authored face.
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_mode(type="FACE")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.mesh.select_random(percent=keep_percent, seed=seed, action="SELECT")
+    bpy.ops.mesh.select_all(action="INVERT")
+    bpy.ops.mesh.delete(type="ONLY_FACES")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.mesh.select_mode(type="VERT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.delete_loose(use_verts=True, use_edges=True, use_faces=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obj.data.update()
 
 
 def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
@@ -69,6 +95,13 @@ def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
             modifier.ratio = ratio
             modifier.use_collapse_triangulate = True
             bpy.ops.object.modifier_apply(modifier=modifier.name)
+
+        if label == "Forest" and name in FOREST_RANDOM_FACE_KEEP_PERCENT:
+            keep_distributed_face_sample(
+                obj,
+                FOREST_RANDOM_FACE_KEEP_PERCENT[name],
+                seed=sum(ord(char) for char in name),
+            )
 
         mesh = obj.data
         mesh.update()
