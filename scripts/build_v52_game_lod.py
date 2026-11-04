@@ -32,7 +32,7 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.12,
+    "Spruce_Primary_Secondary_Boughs": 0.25,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
@@ -42,7 +42,7 @@ FOREST_ISLAND_KEEP_PERCENT = {
 }
 FOREST_LOW_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.05,
+    "Spruce_Primary_Secondary_Boughs": 0.10,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
