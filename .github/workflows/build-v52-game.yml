@@ -99,8 +99,8 @@ jobs:
           changelog = """# Build 021 — Performance-Optimized V52 Conifer LODs
 
           ## Root cause fixed
-          - Build 018 heavily reduced snow/needle meshes first and then sampled only 18% of the remaining islands, compounding the loss and leaving repeated trees visibly bare.
-          - Medium and far LODs now retain 9% and 3.5% respectively of the complete connected snow and needle islands after source-component optimization.
+          - The previous random global island sample chose disconnected needles and snow without considering where they sat on the tree, leaving entire crown sectors bare.
+          - Medium and far LODs retain about 9% and 3.5% of the complete connected snow and needle islands, selected across eight height bands and twelve azimuth sectors.
 
           ## Runtime detail levels
           - Only the dedicated showcase tree uses the full-detail V52 hero mesh.
@@ -219,7 +219,7 @@ jobs:
           for (const required of ['lodMeshes:{medium:forestSpruceV52Mesh,far:forestLowSpruceV52Mesh}','rebuildSceneBatches','distance>=68','if(!lodChanged)return;']) if(!main.includes(required)) throw new Error('Distance LOD runtime wiring missing: '+required);
           if (main.includes('mesh:firSpecies[') || main.includes('add(pineCone')) throw new Error('Legacy conifer geometry remains');
           const qa={
-            build:'020',source:'V52 Cycles spruce',
+            build:'021',source:'V52 Cycles spruce',
             automated_tests:[
               {name:'Hero, medium, far WebGL buffers',status:'PASS',details:'Lengths, finite attributes, indices, and triangle budgets'},
               {name:'Blender Z-up to WebGL Y-up conversion',status:'PASS',details:stats.coordinate_conversion.position_and_normal_mapping},
@@ -262,7 +262,7 @@ jobs:
             '- Medium retains about 9% and far about 3.5% of the complete connected snow/needle islands, spatially balanced across the crown.',
             '', '## Runtime thresholds', '',
             '- Only the single showcase tree uses the full hero mesh.',
-            '- Fuller medium mesh: 26m to under 68m.',
+            '- Medium mesh: all ordinary mature trees within 68m.',
             '- Far mesh: 68m and beyond; also used on small understory and distant ridgeline trees.',
             '', '## Not yet verified', '',
             '- **Pending user review:** actual appearance in the live browser.',
