@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - WinterWorld_Playtest.zip
-      - .deploy-build015
   workflow_run:
     workflows:
       - Build Winter World 015 with final V52 hero spruce
@@ -29,7 +28,7 @@ jobs:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
-      USE_BUILD_015: ${{ github.event_name == 'workflow_run' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'Deploy Build 015')) }}
+      USE_BUILD_015: ${{ github.event_name == 'workflow_run' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -41,7 +40,7 @@ jobs:
           name: WinterWorld-Build015-V52-HeroSpruce
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || 41819475214 }}
+          run-id: ${{ github.event.workflow_run.id }}
           path: artifacts
 
       - name: Check playtest archive
