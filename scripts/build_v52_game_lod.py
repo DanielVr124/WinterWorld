@@ -30,13 +30,13 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.12,
+    "Spruce_Primary_Secondary_Boughs": 0.20,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 5.0,
-    "Spruce_Individual_Needles": 5.0,
+    "Spruce_Settled_Snow_Patches": 18.0,
+    "Spruce_Individual_Needles": 18.0,
 }
 
 
@@ -307,8 +307,8 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=35_000,
-    max_triangles=100_000,
+    min_triangles=150_000,
+    max_triangles=190_000,
 )
 
 combined_stats = {
@@ -389,7 +389,7 @@ def render_lod_comparison_preview(hero_js, forest_js, output_png):
 
     ground_mesh = bpy.data.meshes.new("preview snow ground")
     ground_mesh.from_pydata(
-        [(-24, 0, -18), (-24, 0, 18), (24, 0, 18), (24, 0, -18)],
+        [(-16, 0, -10), (-16, 0, 10), (17, 0, 10), (17, 0, -10)],
         [],
         [(0, 1, 2, 3)],
     )
@@ -405,11 +405,11 @@ def render_lod_comparison_preview(hero_js, forest_js, output_png):
         direction = Vector(point) - obj.location
         obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
-    bpy.ops.object.camera_add(location=(13.5, 9.5, 24.0))
+    bpy.ops.object.camera_add(location=(3.0, 10.0, 32.0))
     camera = bpy.context.object
-    aim(camera, (3.6, 4.0, 0.0))
+    aim(camera, (2.0, 4.1, 0.0))
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 29.0
+    camera.data.ortho_scale = 25.5
     bpy.context.scene.camera = camera
 
     bpy.ops.object.light_add(type="AREA", location=(0.0, 13.0, 8.0))
