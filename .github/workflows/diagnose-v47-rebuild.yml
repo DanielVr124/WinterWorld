@@ -1,0 +1,65 @@
+name: Diagnose Winter World V47 rebuild
+
+on:
+  push:
+    branches:
+      - render-v52-cycles
+    paths:
+      - .github/workflows/diagnose-v47-rebuild.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out diagnostic job
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install geometry build dependencies
+        run: python -m pip install --upgrade numpy trimesh
+
+      - name: Verify and extract reproducible V52 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s render-v52-source.zip
+          echo "ca01fd9004e287a20c6640e2068bdbc2c8777d8f13301dc8b1264cc504dd7b72  render-v52-source.zip" | sha256sum --check -
+          unzip -q render-v52-source.zip
+          test -s render-v52-source/base/build_hero_spruce_v47.py
+          test -s render-v52-source/v52/build_hero_spruce_v52.py
+          test -s render-v52-source/v52/render_cycles_v52.py
+          echo "Archive extraction and required-script checks passed."
+          du -ah render-v52-source | sort -h | tail -30
+
+      - name: Profile V47 rebuild with periodic stack dumps
+        working-directory: render-v52-source/base
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo "V47 diagnostic started: $(date -u +%FT%TZ)"
+          /usr/bin/time -v timeout --signal=TERM --kill-after=20s 900s \
+            python -u -c 'import faulthandler, runpy; faulthandler.enable(); faulthandler.dump_traceback_later(90, repeat=True); runpy.run_path("build_hero_spruce_v47.py", run_name="__main__")' \
+            2>&1 | tee "$GITHUB_WORKSPACE/v47-diagnostic.log"
+          result=${PIPESTATUS[0]}
+          echo "V47 diagnostic exit code: $result"
+          echo "V47 diagnostic ended: $(date -u +%FT%TZ)"
+          exit "$result"
+
+      - name: Upload V47 diagnostic log and intermediate outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-V47-Rebuild-Diagnostics
+          path: |
+            v47-diagnostic.log
+            render-v52-source/base/
+          if-no-files-found: warn
+          retention-days: 14
