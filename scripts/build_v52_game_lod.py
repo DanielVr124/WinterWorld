@@ -47,7 +47,7 @@ def keep_distributed_face_sample(obj, keep_percent, seed):
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_mode(type="FACE")
     bpy.ops.mesh.select_all(action="DESELECT")
-    bpy.ops.mesh.select_random(percent=keep_percent, seed=seed, action="SELECT")
+    bpy.ops.mesh.select_random(ratio=keep_percent / 100.0, seed=seed, action="SELECT")
     bpy.ops.mesh.select_all(action="INVERT")
     bpy.ops.mesh.delete(type="ONLY_FACE")
     bpy.ops.mesh.select_all(action="DESELECT")
