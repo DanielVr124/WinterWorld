@@ -69,6 +69,7 @@ jobs:
           set -euo pipefail
           "${RUNNER_TEMP}/blender-5.2.3-linux-x64/blender" \
             --background --factory-startup \
+            --python-exit-code 1 \
             --python scripts/build_v52_game_lod.py
 
       - name: Integrate V52 into the playable scene
