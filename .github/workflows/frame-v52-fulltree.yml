@@ -180,12 +180,12 @@ jobs:
           ])
           new_bed = "\n".join([
               "                bed_radius=max(support_radius if support_radius is not None else max(lift,thickness),.0008)",
-              "                bottom_half=min(width*.72,bed_radius*.82)",
+              "                bottom_half=min(width*.72,bed_radius*.97)",
               "                bottom_lateral=x*bottom_half",
               "                # Tube radius is circular in this local cross-section; follow its upper arc.",
-              "                wood_cross_radius=bed_radius*.96",
+              "                wood_cross_radius=bed_radius*1.04",
               "                wood_surface=math.sqrt(max(wood_cross_radius*wood_cross_radius-bottom_lateral*bottom_lateral,0.0))",
-              "                embed_depth=max(.00016,bed_radius*.20)",
+              "                embed_depth=max(.00016,bed_radius*.16)",
               "                bottom_offset=max(0.0,wood_surface-embed_depth)",
               "                bottom_y=center[1]+bottom_offset",
               "                bottom_p=center+up*(bottom_y-center[1])+side*bottom_lateral",
