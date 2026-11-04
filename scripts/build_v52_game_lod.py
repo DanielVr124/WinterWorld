@@ -1,5 +1,6 @@
 import base64
 import json
+import math
 import os
 import random
 import re
@@ -31,35 +32,35 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.10,
+    "Spruce_Primary_Secondary_Boughs": 0.12,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 5.0,
-    "Spruce_Individual_Needles": 5.0,
+    "Spruce_Settled_Snow_Patches": 9.0,
+    "Spruce_Individual_Needles": 9.0,
 }
 FOREST_LOW_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.045,
+    "Spruce_Primary_Secondary_Boughs": 0.05,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_LOW_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 1.5,
-    "Spruce_Individual_Needles": 1.5,
+    "Spruce_Settled_Snow_Patches": 3.5,
+    "Spruce_Individual_Needles": 3.5,
 }
 
 
 def keep_connected_island_sample(obj, keep_percent, seed):
-    """Keep complete connected snow/needle islands instead of randomly chopping faces."""
+    """Keep whole snow/needle islands with coverage spread over the tree crown."""
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)
     bm.faces.ensure_lookup_table()
+
     remaining = set(bm.faces)
     components = []
-
     while remaining:
         first = remaining.pop()
         stack = [first]
@@ -77,16 +78,65 @@ def keep_connected_island_sample(obj, keep_percent, seed):
     input_face_count = len(bm.faces)
     target_faces = max(1, round(input_face_count * keep_percent / 100.0))
     rng = random.Random(seed)
-    ranked = [(rng.random(), component) for component in components]
-    ranked.sort(key=lambda item: item[0])
 
+    # A random global sample can leave whole crown sectors empty. Group each
+    # connected island by its vertical band and azimuth sector, then round-robin
+    # the groups so every side and height of the spruce keeps foliage/snow.
+    if not mesh.vertices:
+        raise RuntimeError("Cannot sample connected islands from an empty mesh")
+    min_x = min(vertex.co.x for vertex in mesh.vertices)
+    max_x = max(vertex.co.x for vertex in mesh.vertices)
+    min_y = min(vertex.co.y for vertex in mesh.vertices)
+    max_y = max(vertex.co.y for vertex in mesh.vertices)
+    min_z = min(vertex.co.z for vertex in mesh.vertices)
+    max_z = max(vertex.co.z for vertex in mesh.vertices)
+    center_x = (min_x + max_x) * 0.5
+    center_y = (min_y + max_y) * 0.5
+    height = max(max_z - min_z, 1e-9)
+
+    vertical_bands = 8
+    azimuth_sectors = 12
+    buckets = {}
+    for component in components:
+        component_vertices = {vertex for face in component for vertex in face.verts}
+        count = max(1, len(component_vertices))
+        cx = sum(vertex.co.x for vertex in component_vertices) / count
+        cy = sum(vertex.co.y for vertex in component_vertices) / count
+        cz = sum(vertex.co.z for vertex in component_vertices) / count
+        band = min(vertical_bands - 1, max(0, int((cz - min_z) / height * vertical_bands)))
+        angle = math.atan2(cy - center_y, cx - center_x)
+        sector = int(((angle + math.pi) / (2.0 * math.pi)) * azimuth_sectors) % azimuth_sectors
+        key = (band, sector)
+        buckets.setdefault(key, []).append((len(component), rng.random(), component))
+
+    # Prefer small individual needle/snow islands. Round-robin selection spreads
+    # the limited triangle budget throughout the complete tree crown.
+    for records in buckets.values():
+        records.sort(key=lambda item: (item[0], item[1]))
+
+    keys = sorted(buckets)
+    cursors = {key: 0 for key in keys}
     kept_faces = []
     kept_face_count = 0
-    for _, component in ranked:
-        component_size = len(component)
-        if kept_face_count + component_size <= target_faces:
-            kept_faces.extend(component)
-            kept_face_count += component_size
+    selected_bins = set()
+
+    while kept_face_count < target_faces:
+        progressed = False
+        for key in keys:
+            records = buckets[key]
+            cursor = cursors[key]
+            while cursor < len(records):
+                component_size, _, component = records[cursor]
+                cursors[key] = cursor + 1
+                if kept_face_count + component_size <= target_faces:
+                    kept_faces.extend(component)
+                    kept_face_count += component_size
+                    selected_bins.add(key)
+                    progressed = True
+                    break
+                cursor += 1
+        if not progressed:
+            break
 
     if not kept_faces and components:
         smallest = min(components, key=len)
@@ -113,16 +163,19 @@ def keep_connected_island_sample(obj, keep_percent, seed):
         1 for component in components if all(face in kept_set for face in component)
     )
     return {
-        "method": "deterministic_whole_connected_islands",
+        "method": "stratified_vertical_azimuth_whole_connected_islands",
         "source_islands": len(components),
         "retained_islands": retained_islands,
         "source_faces": input_face_count,
         "retained_faces": kept_face_count,
         "target_face_percent": keep_percent,
         "actual_face_percent": round((kept_face_count / max(1, input_face_count)) * 100.0, 3),
+        "vertical_bands": vertical_bands,
+        "azimuth_sectors": azimuth_sectors,
+        "nonempty_spatial_bins": len(buckets),
+        "selected_spatial_bins": len(selected_bins),
         "output_triangles": output_triangles,
     }
-
 
 def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
     # Reimport for each LOD so the high-detail and forest reductions are both
@@ -323,15 +376,15 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=45_000,
-    max_triangles=65_000,
+    min_triangles=80_000,
+    max_triangles=100_000,
 )
 forest_low_stats = write_mesh_lod(
     "ForestLow",
     FOREST_LOW_COMPONENT_RATIOS,
     output_forest_low_js,
-    min_triangles=15_000,
-    max_triangles=25_000,
+    min_triangles=32_000,
+    max_triangles=45_000,
 )
 
 combined_stats = {
