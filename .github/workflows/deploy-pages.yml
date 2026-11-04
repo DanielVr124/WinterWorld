@@ -13,6 +13,7 @@ on:
       - Build Winter World 017 with intact V52 forest LODs
       - Build Winter World 018 with fuller V52 conifer detail
       - Build Winter World 019 with distance-based V52 LODs
+      - Build Winter World 020 with performance-optimized V52 LODs
     types:
       - completed
   workflow_dispatch:
@@ -33,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       USE_BUILD_015: ${{ github.event_name == 'workflow_run' }}
-      BUILD_ARCHIVE: ${{ github.event.workflow_run.name == 'Build Winter World 019 with distance-based V52 LODs' && 'WinterWorld_Playtest_Build019_V52_DistanceLOD.zip' || (github.event.workflow_run.name == 'Build Winter World 018 with fuller V52 conifer detail' && 'WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip') || (github.event.workflow_run.name == 'Build Winter World 017 with intact V52 forest LODs' && 'WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip') || (github.event.workflow_run.name == 'Build Winter World 016 with upright V52 conifer forest' && 'WinterWorld_Playtest_Build016_V52_ConiferForest.zip' || 'WinterWorld_Playtest_Build015_V52.zip') }}
+      BUILD_ARCHIVE: ${{ github.event.workflow_run.name == 'Build Winter World 020 with performance-optimized V52 LODs' && 'WinterWorld_Playtest_Build020_V52_PerformanceLOD.zip' || github.event.workflow_run.name == 'Build Winter World 019 with distance-based V52 LODs' && 'WinterWorld_Playtest_Build019_V52_DistanceLOD.zip' || github.event.workflow_run.name == 'Build Winter World 018 with fuller V52 conifer detail' && 'WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip' || github.event.workflow_run.name == 'Build Winter World 017 with intact V52 forest LODs' && 'WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip' || github.event.workflow_run.name == 'Build Winter World 016 with upright V52 conifer forest' && 'WinterWorld_Playtest_Build016_V52_ConiferForest.zip' || 'WinterWorld_Playtest_Build015_V52.zip' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -42,7 +43,7 @@ jobs:
         if: env.USE_BUILD_015 == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: ${{ github.event.workflow_run.name == 'Build Winter World 019 with distance-based V52 LODs' && 'WinterWorld-Build019-V52-DistanceLOD' || (github.event.workflow_run.name == 'Build Winter World 018 with fuller V52 conifer detail' && 'WinterWorld-Build018-V52-FullerConiferForest') || (github.event.workflow_run.name == 'Build Winter World 017 with intact V52 forest LODs' && 'WinterWorld-Build017-V52-ForestLODRepair') || (github.event.workflow_run.name == 'Build Winter World 016 with upright V52 conifer forest' && 'WinterWorld-Build016-V52-ConiferForest' || 'WinterWorld-Build015-V52-HeroSpruce') }}
+          name: ${{ github.event.workflow_run.name == 'Build Winter World 020 with performance-optimized V52 LODs' && 'WinterWorld-Build020-V52-PerformanceLOD' || github.event.workflow_run.name == 'Build Winter World 019 with distance-based V52 LODs' && 'WinterWorld-Build019-V52-DistanceLOD' || github.event.workflow_run.name == 'Build Winter World 018 with fuller V52 conifer detail' && 'WinterWorld-Build018-V52-FullerConiferForest' || github.event.workflow_run.name == 'Build Winter World 017 with intact V52 forest LODs' && 'WinterWorld-Build017-V52-ForestLODRepair' || github.event.workflow_run.name == 'Build Winter World 016 with upright V52 conifer forest' && 'WinterWorld-Build016-V52-ConiferForest' || 'WinterWorld-Build015-V52-HeroSpruce' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
@@ -86,7 +87,7 @@ jobs:
                 exit 1
               fi
             done
-            if [[ "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build016_V52_ConiferForest.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build019_V52_DistanceLOD.zip" ]]; then
+            if [[ "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build016_V52_ConiferForest.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build017_V52_ForestLODRepair.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build018_V52_FullerConiferForest.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build019_V52_DistanceLOD.zip" || "$BUILD_ARCHIVE" == "WinterWorld_Playtest_Build020_V52_PerformanceLOD.zip" ]]; then
               for file in src/forest_spruce_v52_data.js src/forest_spruce_v52_low_data.js; do
                 if [[ ! -s "$GAME_DIR/$file" ]]; then
                   echo "::error::Build 016 asset is missing: $GAME_DIR/$file"
@@ -116,6 +117,8 @@ jobs:
               replacements['src="src/hero_spruce_v52_data.js"'] = f'src="src/hero_spruce_v52_data.js?v={version}"'
           if 'src="src/forest_spruce_v52_data.js"' in html:
               replacements['src="src/forest_spruce_v52_data.js"'] = f'src="src/forest_spruce_v52_data.js?v={version}"'
+          if 'src="src/forest_spruce_v52_low_data.js"' in html:
+              replacements['src="src/forest_spruce_v52_low_data.js"'] = f'src="src/forest_spruce_v52_low_data.js?v={version}"'
           for old, new in replacements.items():
               if old not in html:
                   raise SystemExit(f"Expected cacheable asset reference not found: {old}")
