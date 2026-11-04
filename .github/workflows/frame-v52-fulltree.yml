@@ -89,16 +89,8 @@ jobs:
               "primary bough collar")
 
           replace_once(
-              """                    boughs.add_tube([root,mid,tip],[r0,r0*.49,.0035],'twig',6,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.035)""",
-              """                    # A compact fork collar softens the secondary-to-primary
-                          # junction without adding detached geometry or changing its reach.
-                          boughs.add_tube([root,mid,tip],[r0*1.22,r0*.58,.0035],
-                                          'twig',7,branch_seed+200+j*11+(1 if side_sign>0 else 0),ridged=.030)""",
-              "secondary fork collar")
-
-          replace_once(
               """    stats['notes']='V52 natural-snow pass: preserves the approved V47 branch silhouette and individual-needle detail, but replaces repeated short snow caps with longer, connected, feather-edged mantles following primary boughs and secondary fans. Smaller tertiary deposits are less frequent and thinner, with broader low-frequency edge drift and a smoother rounded cross-section. Subtle lower-bough sag, needle hue variation, and the Blender PBR material pass are retained. No detached snow blobs are emitted.'""",
-              """    stats['notes']='V52 final polish: preserves the approved crown silhouette, individual-needle detail and connected feather-edged snow mantles. Primary bough roots receive a restrained basal collar, secondary forks receive subtle blended collars, and the eight varied root flares now reach the forest floor. Branch reach, crown proportions, snow coverage and needle distribution remain unchanged. No detached snow blobs are emitted.'""",
+              """    stats['notes']='V52 final polish: preserves the approved crown silhouette, individual-needle detail and connected feather-edged snow mantles. Primary bough roots receive a restrained basal collar, and the eight varied root flares now reach the forest floor. Branch reach, crown proportions, snow coverage and needle distribution remain unchanged. No detached snow blobs are emitted.'""",
               "final build notes")
 
           compile(s, str(path), "exec")
