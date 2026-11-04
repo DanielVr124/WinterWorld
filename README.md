@@ -1,32 +1,31 @@
 # Winter World
 
-A public, browser-playable WebGL2 exploration prototype. The repository now includes an automatic GitHub Pages deployment workflow.
+A public, browser-playable WebGL2 exploration prototype.
 
-**Current playtest package:** Build 015 — Final V52 Hero Spruce  
-**Hosted URL after the first successful deployment:** https://danielvr124.github.io/WinterWorld/
+**Current playtest package:** Development Build 016 — Upright V52 Conifer Forest  
+**Live website:** https://danielvr124.github.io/WinterWorld/  
+**Build 016 workflow:** https://github.com/DanielVr124/WinterWorld/actions/runs/41827324853
 
-## One-time setup
+## Build 016
 
-1. Open [Repository Pages settings](https://github.com/DanielVr124/WinterWorld/settings/pages).
-2. Under **Build and deployment → Source**, select **GitHub Actions**.
-3. Download the [Winter World playtest archive](https://github.com/DanielVr124/WinterWorld) from this conversation and upload it to the repository root using **Add file → Upload files**. The exact filename must be `WinterWorld_Playtest.zip`.
-4. Commit the upload to `main`. The **Publish Winter World Playtest** workflow will extract the archive, validate the required game files, and deploy the site.
+- Corrects the V52 spruce's Blender Z-up to WebGL Y-up coordinate conversion, including vertex normals.
+- Normalizes the bottom of the snow-root geometry to the terrain.
+- Replaces every conifer in the playable forest with the final V52 spruce model.
+- Uses one high-detail V52 hero tree near the path and a shared lightweight V52-derived LOD for the rest of the forest, including the distant ridgeline.
+- Preserves the sakura grove, terrain, path, cabin, rocks, lanterns, controls, collision behavior, fog, snowfall, settings, and world layout.
+- Build-time checks validate upright bounds, both mesh buffers, index ranges, triangle budgets, JavaScript syntax, and ZIP integrity.
 
-The workflow is at `.github/workflows/deploy-pages.yml`. You can also start it manually from the repository's **Actions** tab after Pages has been enabled.
+## Automated publishing
 
-## Publishing future playtests
+The V52 build pipeline runs on the `render-v52-cycles` branch through `.github/workflows/build-v52-game.yml`. A successful build uploads a versioned artifact to its Actions run.
 
-The approved V52 build pipeline runs on the `render-v52-cycles` branch through `.github/workflows/build-v52-game.yml`. After the game build passes its Blender conversion, WebGL2 mesh-buffer, JavaScript, triangle-budget, and ZIP checks, it uploads a `WinterWorld-Build015-V52-HeroSpruce` artifact.
+The default-branch workflow at `.github/workflows/deploy-pages.yml` downloads that exact artifact, validates its game files, and deploys it to the same GitHub Pages URL. Asset URLs receive a unique deployment-run query so browsers fetch the latest files after each publish.
 
-The default-branch workflow at `.github/workflows/deploy-pages.yml` listens for successful Build 015 workflow runs, downloads that exact run's artifact, validates the game files, and deploys the extracted `WinterWorld_Prototype/` folder to the **same hosted URL**. Asset URLs receive a unique deployment-run query so browsers fetch the new files after each publish.
-
-For a manual playtest package outside the V52 pipeline, the Pages workflow still supports the root-level `WinterWorld_Playtest.zip` upload path. Keep its contents inside `WinterWorld_Prototype/` with `index.html`, `style.css`, `src/main.js`, and `src/sakura_mesh_data.js`; Build 015 also includes `src/hero_spruce_v52_data.js` and its stats file.
-
-If GitHub does not offer an overwrite for the existing ZIP, delete the old `WinterWorld_Playtest.zip` from the repository first, then upload the replacement with the exact same filename.
+The approved playtest package is also published as a GitHub Release with its ZIP, mesh statistics, changelog, and preview renders.
 
 ## Local play
 
-Extract the archive and serve the `WinterWorld_Prototype` folder over HTTP (for example, `python -m http.server 8000`). Open `http://localhost:8000/`. Do not open `index.html` directly as a `file://` URL.
+Extract the playtest ZIP, open the `WinterWorld_Prototype` folder, and serve it over HTTP (for example, `python -m http.server 8000`). Then open `http://localhost:8000/` in a current Chrome or Edge browser. Do not open `index.html` directly as a `file://` URL.
 
 ## Public access
 
