@@ -110,10 +110,7 @@ jobs:
               raise SystemExit("Expected framed full-tree render call was not found; refusing to guess.")
           source = source.replace(old_render, new_render, 1)
 
-          stop_marker = "render_to(scene, back_camera,"
-          if stop_marker not in source:
-              raise SystemExit("Could not locate secondary-view section.")
-          source = source[:source.index(stop_marker)]
+          # The source script is already a single-view renderer.
           compile(source, str(path), "exec")
           path.write_text(source, encoding="utf-8")
           print("Applied Z-up camera, lights and horizontal floor; full tree target is computed from Blender world bounds.")
