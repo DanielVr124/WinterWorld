@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - WinterWorld_Playtest.zip
+      - .deploy-build015
   workflow_run:
     workflows:
       - Build Winter World 015 with final V52 hero spruce
@@ -27,24 +28,26 @@ jobs:
   build:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      USE_BUILD_015: ${{ github.event_name == 'workflow_run' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'Deploy Build 015')) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Download Build 015 artifact
-        if: github.event_name == 'workflow_run'
+        if: env.USE_BUILD_015 == 'true'
         uses: actions/download-artifact@v4
         with:
           name: WinterWorld-Build015-V52-HeroSpruce
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || 41819475214 }}
           path: artifacts
 
       - name: Check playtest archive
         shell: bash
         run: |
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+          if [[ "$USE_BUILD_015" == "true" ]]; then
             ARCHIVE="artifacts/WinterWorld_Playtest_Build015_V52.zip"
           else
             ARCHIVE="WinterWorld_Playtest.zip"
@@ -59,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p package _site
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+          if [[ "$USE_BUILD_015" == "true" ]]; then
             unzip -q artifacts/WinterWorld_Playtest_Build015_V52.zip -d package
           else
             unzip -q WinterWorld_Playtest.zip -d package
