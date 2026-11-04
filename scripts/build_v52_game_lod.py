@@ -20,9 +20,9 @@ bpy.ops.import_scene.gltf(filepath=input_glb)
 
 ratios = {
     "Spruce_Trunk_Bark": 1.0,
-    "Spruce_Primary_Secondary_Boughs": 0.45,
-    "Spruce_Settled_Snow_Patches": 0.025,
-    "Spruce_Individual_Needles": 0.12,
+    "Spruce_Primary_Secondary_Boughs": 0.35,
+    "Spruce_Settled_Snow_Patches": 0.0045,
+    "Spruce_Individual_Needles": 0.03,
 }
 
 objects = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
