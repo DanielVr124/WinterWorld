@@ -96,10 +96,10 @@ jobs:
           html = html.replace("Final V52 spruce across the entire conifer forest · Build 016", "Fuller snowy V52 forest LODs · Build 023")
           html = html.replace("M2 VISUAL BENCHMARK · V52 SPRUCE USED FOR EVERY CONIFER · BAKERY, NPC AI & WORLD EXPANSION STILL AHEAD", "M2 VISUAL BENCHMARK · FULLER SNOWY V52 FOREST · NATURAL SNOW TERRAIN & BAKERY INTERIOR STILL AHEAD")
           index.write_text(html, encoding="utf-8")
-          changelog = """# Build 023 — Performance-Optimized V52 Conifer LODs
+          changelog = """# Build 023 — Fuller Snowy V52 Conifer LODs
 
           ## Root cause fixed
-          - The previous random global island sample chose disconnected needles and snow without considering where they sat on the tree, leaving entire crown sectors bare.
+          - Build 022 sampled only 9%/3.5% of already-decimated foliage and selected the smallest snow fragments, so the canopy still looked bare. Build 023 increases coverage and preserves larger whole snow deposits while distributing both materials over the crown.
           - Medium and far LODs retain 20% and 8% of the decimated snow/needle islands across eight height bands and twelve azimuth sectors. Snow selection prioritizes larger complete deposits; needle selection preserves smaller individual clusters.
 
           ## Runtime detail levels
@@ -150,14 +150,14 @@ jobs:
           progress = """# Winter World — Development Progress
 
           ## Current status
-          - **Latest build:** 022
+          - **Latest build:** 023
           - **Milestone:** M2 — Quality Benchmark
-          - **Current pass:** Fuller V52 bough structure in medium/far LODs
+          - **Current pass:** Fuller snowy canopy and shape-preserving medium/far V52 LODs
 
           ## Build 023
           - Root cause: Build 018's random global island sampling left entire crown sectors bare even when some islands were retained.
           - Medium and far trees retain 20% and 8% of the decimated snow/needle islands across the crown, with bough retention increased to 35% and 20%. Snow keeps larger complete deposits; needles keep smaller distributed clusters.
-          - Runtime keeps the full hero mesh on the single showcase tree; ordinary mature trees use medium below 68m and far beyond 28m. Small and distant trees use far LOD.
+          - Runtime keeps the full hero mesh on the single showcase tree; ordinary mature trees use medium below 28m and far beyond 28m. Small and distant trees use far LOD.
           - Restored Markdown/JSON QA reports and actual exported-mesh render.
 
           ## Pending user review
