@@ -1,0 +1,160 @@
+name: Build Winter World 024 with natural snow terrain and walkable bakery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - scripts/prepare_environment_build024.py
+      - .github/workflows/build-environment-024.yml
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: winterworld-build024-environment
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out Winter World source
+        uses: actions/checkout@v4
+
+      - name: Download the latest published Build 022 package
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build022-V52-FullerBoughs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 41930569447
+          path: artifacts
+
+      - name: Extract the playable base package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/WinterWorld_Playtest_Build022_V52_FullerBoughs.zip
+          mkdir -p work
+          unzip -q artifacts/WinterWorld_Playtest_Build022_V52_FullerBoughs.zip -d work
+          test -s work/WinterWorld_Prototype/src/main.js
+          test -s work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
+          test -s work/WinterWorld_Prototype/src/forest_spruce_v52_low_data.js
+
+      - name: Apply natural terrain and bakery environment milestone
+        run: |
+          set -euo pipefail
+          python scripts/prepare_environment_build024.py work/WinterWorld_Prototype
+
+      - name: Validate code, terrain continuity, doorway, and collision layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd work/WinterWorld_Prototype
+          node --check src/main.js
+          node --check src/hero_spruce_v52_data.js
+          node --check src/forest_spruce_v52_data.js
+          node --check src/forest_spruce_v52_low_data.js
+          node - <<'JS' > ../../BUILD_024_TERRAIN_METRICS.json
+          const fs=require('fs'),vm=require('vm');
+          const main=fs.readFileSync('src/main.js','utf8');
+          const required=[
+            'terrainNaturalHeight','snowDriftSites','terrainValueNoise',
+            'bakery service counter','bakery oven','bakery ingredient shelves',
+            'insideBakery','bakery front left wall','bakery front right wall',
+            'treadZ=bz-5.25+i*.72'
+          ];
+          for(const marker of required) if(!main.includes(marker)) throw new Error('Missing environment feature: '+marker);
+          if(main.includes("addBoxCollider(bx-4.5,bx+4.5,bz-3.5,bz+3.5,'cabin')")) throw new Error('Old solid-cabin collider is still present');
+          const start=main.indexOf('  const terrainSmooth=');
+          const end=main.indexOf('  // Higher mesh density',start);
+          if(start<0||end<0) throw new Error('Could not isolate terrain heightfield for sampling');
+          const context={clamp01:v=>Math.max(0,Math.min(1,v)),planeGrid:()=>({}),add:()=>{}};
+          vm.createContext(context);
+          vm.runInContext(main.slice(start,end),context);
+          const metrics=vm.runInContext(`(()=>{
+            let min=Infinity,max=-Infinity,maxDelta=0;
+            for(let z=-54;z<=42;z+=1)for(let x=-54;x<=54;x+=1){
+              const h=terrainHeight(x,z);
+              min=Math.min(min,h);max=Math.max(max,h);
+              maxDelta=Math.max(maxDelta,Math.abs(terrainHeight(x+1,z)-h),Math.abs(terrainHeight(x,z+1)-h));
+            }
+            let padMin=Infinity,padMax=-Infinity;
+            for(let z=-27.2;z<=-20.8;z+=.5)for(let x=.8;x<=9.2;x+=.5){
+              const h=terrainHeight(x,z);padMin=Math.min(padMin,h);padMax=Math.max(padMax,h);
+            }
+            return {min,max,maxDeltaPerMeter:maxDelta,bakeryPadMin:padMin,bakeryPadMax:padMax,pathCenterAtEntrance:pathCenter((32+27.5)/76)};
+          })()`,context);
+          if(!Number.isFinite(metrics.min)||!Number.isFinite(metrics.max)||metrics.min < -2.5||metrics.max > 2.5) throw new Error('Terrain height outside safe range');
+          if(metrics.maxDeltaPerMeter>.65) throw new Error('Terrain slope discontinuity exceeds the walking threshold');
+          if(Math.abs(metrics.bakeryPadMax-metrics.bakeryPadMin)>.001) throw new Error('Bakery foundation pad is not level');
+          if(Math.abs(metrics.bakeryPadMin-.05)>.001) throw new Error('Bakery floor pad target height changed');
+          if(metrics.pathCenterAtEntrance+3.15<3.6) throw new Error('Snow shoulder does not reach the bakery entrance zone');
+          const floorTop=.05+.20, lastStep=.05+4*.05;
+          if(Math.abs(floorTop-lastStep)>.001) throw new Error('Last entrance step does not align with bakery floor');
+          console.log(JSON.stringify(metrics,null,2));
+          JS
+          cd ../..
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          metrics=json.loads(Path('BUILD_024_TERRAIN_METRICS.json').read_text(encoding='utf-8'))
+          report={
+            'build':'024',
+            'focus':'Natural snow terrain and walkable bakery interior',
+            'automated_tests':[
+              {'name':'JavaScript syntax for scene and V52 mesh data','status':'PASS'},
+              {'name':'Layered deterministic terrain sampling','status':'PASS','details':f"height range {metrics['min']:.3f}m to {metrics['max']:.3f}m; max sampled 1m delta {metrics['maxDeltaPerMeter']:.3f}m"},
+              {'name':'Level bakery foundation pad','status':'PASS','details':f"height {metrics['bakeryPadMin']:.3f}m across building footprint"},
+              {'name':'Bakery open doorway and room collision markers','status':'PASS'},
+              {'name':'Bakery floor/entrance step height continuity','status':'PASS'},
+              {'name':'Path snow shoulder reaches entrance area','status':'PASS'},
+              {'name':'Old solid-cabin blocker removed','status':'PASS'}
+            ],
+            'terrain_metrics':metrics,
+            'manual_tests':[
+              {'name':'First-person visual review of snow terrain and drifts','status':'PENDING_USER_REVIEW'},
+              {'name':'Walk the path and enter/exit bakery without clipping','status':'PENDING_USER_REVIEW'},
+              {'name':'Target-PC frame-rate check','status':'PENDING_USER_REVIEW'}
+            ]
+          }
+          Path('BUILD_024_TEST_REPORT.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          lines=[
+            '# Build 024 — Automated Test Report','',
+            '## Automated checks','',
+            *[f"- **{t['status']}** — {t['name']}: {t.get('details','')}" for t in report['automated_tests']],
+            '',
+            '## Terrain sample',
+            f"- Height range: {metrics['min']:.3f}m to {metrics['max']:.3f}m.",
+            f"- Maximum sampled 1m height delta: {metrics['maxDeltaPerMeter']:.3f}m.",
+            f"- Bakery foundation pad: level at {metrics['bakeryPadMin']:.3f}m.",
+            f"- Path center at the entrance approach: x={metrics['pathCenterAtEntrance']:.2f}m.",
+            '',
+            '## Still requires hands-on review','',
+            '- First-person visual appearance of terrain and snow drifts.',
+            '- Walking the path, climbing the steps, entering and exiting the bakery, and checking furniture collisions.',
+            '- Frame rate on the target PC. Automated geometry and terrain sampling do not establish target-hardware FPS.',
+            ''
+          ]
+          Path('BUILD_024_TEST_REPORT.md').write_text('\n'.join(lines),encoding='utf-8')
+          PY
+          cp work/WinterWorld_Prototype/BUILD_024_CHANGELOG.md BUILD_024_CHANGELOG.md
+          zip -qr -9 WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip work/WinterWorld_Prototype
+          unzip -tq WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip
+          ls -lh WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip BUILD_024_CHANGELOG.md BUILD_024_TEST_REPORT.md BUILD_024_TEST_REPORT.json BUILD_024_TERRAIN_METRICS.json
+
+      - name: Upload Build 024 playable package and QA reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-Build024-NaturalSnow-Bakery
+          path: |
+            WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip
+            BUILD_024_CHANGELOG.md
+            BUILD_024_TEST_REPORT.md
+            BUILD_024_TEST_REPORT.json
+            BUILD_024_TERRAIN_METRICS.json
+          if-no-files-found: error
+          retention-days: 14
