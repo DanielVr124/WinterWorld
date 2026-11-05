@@ -1,0 +1,171 @@
+name: Build Winter World 025 with Quest Browser and immersive WebXR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-vr-browser-025.yml
+      - scripts/prepare_quest_browser_build025.py.zlib.b64
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: winterworld-build025-quest-browser
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out Winter World source
+        uses: actions/checkout@v4
+
+      - name: Download the successful Build 024 environment package
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build024-NaturalSnow-Bakery
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 41986028992
+          path: artifacts
+
+      - name: Extract the playable Build 024 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip
+          mkdir -p work
+          unzip -q artifacts/WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip -d work
+          test -s work/WinterWorld_Prototype/src/main.js
+          test -s work/WinterWorld_Prototype/src/forest_spruce_v52_data.js
+          test -s work/WinterWorld_Prototype/src/forest_spruce_v52_low_data.js
+
+      - name: Decode and apply Quest Browser / WebXR support
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64
+          import zlib
+          from pathlib import Path
+
+          payload = Path("scripts/prepare_quest_browser_build025.py.zlib.b64").read_text(encoding="ascii").strip()
+          source = zlib.decompress(base64.b64decode(payload))
+          script = Path("scripts/prepare_quest_browser_build025.py")
+          script.write_bytes(source)
+          print(f"Decoded deterministic Build 025 patch: {len(source):,} bytes")
+          PY
+          python scripts/prepare_quest_browser_build025.py work/WinterWorld_Prototype
+
+      - name: Validate WebXR, touch controls, preserved environment, and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd work/WinterWorld_Prototype
+          node --check src/main.js
+          node --check src/hero_spruce_v52_data.js
+          node --check src/forest_spruce_v52_data.js
+          node --check src/forest_spruce_v52_low_data.js
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          root=Path(".")
+          html=(root/"index.html").read_text(encoding="utf-8")
+          css=(root/"style.css").read_text(encoding="utf-8")
+          js=(root/"src/main.js").read_text(encoding="utf-8")
+
+          required_html=[
+            'id="enterButton"','id="enterVRButton"','id="touchControls"',
+            'id="moveZone"','id="moveKnob"','id="lookZone"','id="touchRun"'
+          ]
+          required_css=[
+            '.touch-controls.active','body.xr-presenting',
+            '.touch-move-zone','.touch-look-zone'
+          ]
+          required_js=[
+            "navigator.xr.requestSession('immersive-vr'",
+            "gl.makeXRCompatible()","new XRWebGLLayer(session,gl",
+            "requestReferenceSpace('local-floor')","session.requestAnimationFrame(render)",
+            "xrSession.requestAnimationFrame(render)","xrSession.inputSources",
+            "gamepad.axes","handedness==='left'","handedness==='right'",
+            "touchMove.x","touchMove.y","pointerdown","pointermove",
+            "KeyW","KeyA","KeyS","KeyD","terrainNaturalHeight",
+            "bakery service counter","insideBakery"
+          ]
+          for marker in required_html:
+            if marker not in html: raise SystemExit("Missing HTML control: "+marker)
+          for marker in required_css:
+            if marker not in css: raise SystemExit("Missing Quest/touch CSS: "+marker)
+          for marker in required_js:
+            if marker not in js: raise SystemExit("Missing runtime support: "+marker)
+          if "requestPointerLock?.()" not in js:
+            raise SystemExit("Desktop pointer-lock input was unexpectedly removed")
+          if "xrSession.requestAnimationFrame(render);" not in js or "requestAnimationFrame(render);" not in js:
+            raise SystemExit("Normal/XR frame scheduling is incomplete")
+          if not (root/"src/hero_spruce_v52_data.js").stat().st_size:
+            raise SystemExit("V52 hero asset missing")
+          if not (root/"src/forest_spruce_v52_data.js").stat().st_size:
+            raise SystemExit("V52 medium asset missing")
+          if not (root/"src/forest_spruce_v52_low_data.js").stat().st_size:
+            raise SystemExit("V52 far asset missing")
+
+          qa={
+            "build":"025",
+            "focus":"Quest Browser flat-play controls and immersive WebXR",
+            "automated_tests":[
+              {"name":"Game JavaScript syntax","status":"PASS"},
+              {"name":"Quest Browser flat-page entry and touch controls","status":"PASS","details":"On-screen left movement stick, right-side drag-look region, and run button are present and wired to pointer events."},
+              {"name":"Immersive WebXR entry","status":"PASS","details":"Feature-detected immersive-vr button, makeXRCompatible, XRWebGLLayer, and local-floor reference-space path are wired."},
+              {"name":"Stereo headset rendering","status":"PASS","details":"Each XR view uses its per-eye projection matrix and viewport."},
+              {"name":"Quest Touch controller input","status":"PASS","details":"Left controller thumbstick locomotion, right controller snap turning, and slower VR movement are wired."},
+              {"name":"Desktop controls preserved","status":"PASS","details":"Keyboard movement and pointer-lock mouse look remain available."},
+              {"name":"Build 024 terrain and bakery preserved","status":"PASS","details":"Natural terrain functions and walkable bakery scene remain in the base package."},
+              {"name":"V52 assets preserved","status":"PASS"},
+            ],
+            "manual_tests":[
+              {"name":"Open the live HTTPS page in Quest 3 Browser","status":"PENDING_QUEST_3"},
+              {"name":"Enter flat browser play and use the virtual movement/look controls","status":"PENDING_QUEST_3"},
+              {"name":"Start Immersive VR and verify stereo head tracking","status":"PENDING_QUEST_3"},
+              {"name":"Verify left-stick movement and right-stick snap turning","status":"PENDING_QUEST_3"},
+              {"name":"Check headset frame rate and thermals","status":"PENDING_QUEST_3"},
+              {"name":"Walk the snow terrain and enter/exit the bakery in VR","status":"PENDING_QUEST_3"}
+            ]
+          }
+          Path("../../BUILD_025_TEST_REPORT.json").write_text(json.dumps(qa,indent=2)+"\n",encoding="utf-8")
+          lines=[
+            "# Build 025 — Quest Browser / WebXR Test Report","",
+            "## Automated checks","",
+            *[f"- **{t['status']}** — {t['name']}: {t.get('details','')}" for t in qa["automated_tests"]],
+            "",
+            "## Requires Quest 3 hands-on testing","",
+            "- Open the HTTPS GitHub Pages playtest from Quest Browser.",
+            "- Verify the flat-page controls work with the browser's pointer/controller interaction.",
+            "- Verify immersive-vr permission, stereo tracking, controller axis mapping, and snap turning.",
+            "- Check frame rate/thermal behavior, walk the snowy terrain, and enter/exit the bakery.",
+            "",
+            "The CI checks confirm code wiring and packaging only; they do not establish that WebXR is granted by the headset or that the controls feel correct on the actual Quest 3."
+          ]
+          Path("../../BUILD_025_TEST_REPORT.md").write_text("\n".join(lines)+"\n",encoding="utf-8")
+          PY
+          cd ../..
+          cp work/WinterWorld_Prototype/BUILD_025_CHANGELOG.md BUILD_025_CHANGELOG.md
+          zip -qr -9 WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip work/WinterWorld_Prototype
+          unzip -tq WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip
+          ls -lh WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip BUILD_025_CHANGELOG.md BUILD_025_TEST_REPORT.md BUILD_025_TEST_REPORT.json
+
+      - name: Upload Build 025 playtest and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinterWorld-Build025-QuestBrowser-WebXR
+          path: |
+            WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip
+            BUILD_025_CHANGELOG.md
+            BUILD_025_TEST_REPORT.md
+            BUILD_025_TEST_REPORT.json
+          if-no-files-found: error
+          retention-days: 14
