@@ -1,0 +1,67 @@
+name: Publish Winter World Development Build 025 Release
+
+on:
+  workflow_run:
+    workflows:
+      - Build Winter World 025 with Quest Browser and immersive WebXR
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the successful Build 025 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build025-QuestBrowser-WebXR
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Prepare release assets and verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find_one() {
+            local name="$1"
+            local found
+            found="$(find artifacts -type f -name "$name" -print -quit)"
+            if [[ -z "$found" || ! -s "$found" ]]; then
+              echo "::error::Required Build 025 release asset is missing: $name"
+              exit 1
+            fi
+            cp "$found" "release-assets/$name"
+          }
+          find_one "WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip"
+          find_one "BUILD_025_CHANGELOG.md"
+          find_one "BUILD_025_TEST_REPORT.md"
+          find_one "BUILD_025_TEST_REPORT.json"
+          unzip -tq release-assets/WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip
+          ls -lh release-assets/
+
+      - name: Publish the numbered GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TARGET: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="winter-world-build-025-quest-browser-webxr"
+          TITLE="Winter World Development Build 025 — Quest Browser & Immersive WebXR"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --title "$TITLE" \
+              --notes-file release-assets/BUILD_025_CHANGELOG.md \
+              --target "$TARGET"
+          fi
