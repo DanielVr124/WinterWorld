@@ -2,54 +2,51 @@
 
 A public, browser-playable WebGL2 first-person winter-world prototype.
 
-**Current build:** Development Build 024 — Natural Snow Terrain & Walkable Bakery  
+**Current build:** Development Build 025 — Quest Browser & Immersive WebXR  
 **Live playtest:** https://danielvr124.github.io/WinterWorld/  
-**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-024-natural-snow-bakery  
+**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-025-quest-browser-webxr  
 **Project roadmap:** [ROADMAP.md](ROADMAP.md)
 
-## Build 024 — Natural Snow Terrain & Walkable Bakery
+## Build 025 — Quest Browser playtest
 
-This milestone moves the environment ahead of further forest LOD polishing, as requested.
+Build 025 keeps the natural snow terrain and walkable bakery from Build 024 and adds browser-first Quest 3 testing:
 
-- Replaces the simple repeating ground ripples with a deterministic layered snow heightfield, broad rolling forms, and wind-built drifts.
-- Uses one shared terrain height function for the visible snowfield, props, path, and first-person ground height.
-- Blends a level foundation under the bakery and bends the path approach toward its entrance.
-- Replaces the solid cabin blocker with separate wall collisions and an open doorway.
-- Adds a walkable timber floor, service counter and pastry display, oven, ingredient shelves, prep table, ceiling beams, warm interior fixtures, and room-aware collisions.
-- Keeps the existing V52 forest meshes and performance-oriented LODs unchanged from Build 022.
+- Open the GitHub Pages playtest directly in Quest Browser over HTTPS.
+- Choose **Open Browser Play** for a flat browser-page version with an on-screen left movement stick, right-side drag-look area, and run button. No keyboard or pointer lock is required.
+- Choose **Enter Immersive VR** when the browser reports WebXR support. This starts an immersive stereo headset session.
+- In immersive VR, headset pose drives the camera; the left Touch controller thumbstick moves; the right thumbstick snap-turns.
+- Touch/Quest and immersive VR start with the Performance graphics preset to reduce the headset rendering load. Desktop keyboard/mouse controls remain available.
 
-**Automated checks:** JavaScript syntax, sampled terrain height/slope bounds, level bakery foundation, doorway and wall-collision markers, stair/floor height alignment, and ZIP integrity passed in CI.
+## Quest 3 test steps
 
-**Still needs hands-on review:** the actual first-person visual quality of the snow, walking the terrain and entrance steps, entering/exiting the bakery and checking furniture collisions, and target-PC FPS. Passing automated checks does not establish that those visual and movement checks are complete.
+1. Open the live playtest link above in Quest Browser.
+2. On the intro screen, choose **Enter Immersive VR** to launch the stereo headset session.
+3. Use the left controller thumbstick to walk and the right controller thumbstick to snap-turn.
+4. If immersive mode is unavailable, choose **Open Browser Play** and use the on-screen movement/look controls.
+5. Check the natural snowfield, entrance steps, and bakery doorway/interior.
+
+**Manual test status:** The build, JavaScript checks, WebXR/touch-control wiring checks, V52 asset checks, and ZIP integrity passed in CI. Actual Quest 3 WebXR permission, controller axis mapping, movement feel, headset frame rate, and bakery entry/exit still need hands-on testing.
 
 ## Downloads and reports
 
-The [Build 024 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-024-natural-snow-bakery) includes:
-- Playable Build 024 ZIP.
-- Human-readable automated test report.
-- Machine-readable QA results and terrain metrics.
+The [Build 025 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-025-quest-browser-webxr) includes:
+- Playable Build 025 ZIP.
+- Human-readable test report.
+- Machine-readable QA report.
 - Build changelog.
 
-## Run locally
-
-1. Download and extract the playtest ZIP.
-2. Open the `WinterWorld_Prototype` folder.
-3. Open `index.html` in Chrome or Edge.
-4. If local-file loading is blocked, run `py -m http.server 8000` in that folder and open `http://127.0.0.1:8000/`.
-
-## Controls
+## Desktop controls
 
 - `W`, `A`, `S`, `D` or arrow keys: move
 - Mouse: look around
 - `Shift`: move faster
 - `Esc`: release the mouse / close settings
-- Click the scene: capture the mouse
-- `E`: development note
+- Click scene: capture mouse
 - `F3`: performance and V52 LOD diagnostics
 
 ## Build history
 
 - **Build 020:** Reduced the forest's severe triangle workload and avoided unnecessary GPU-buffer uploads while walking.
-- **Build 021–022:** Improved the coverage and authored branch structure of medium/far V52 spruce LODs.
-- **Build 023:** Experimental forest direction; deferred from public deployment so terrain and the bakery could take priority.
-- **Build 024:** Natural snow terrain, bakery doorway/interior, and room-aware walking/collision.
+- **Build 021–022:** Improved coverage and authored branch structure of medium/far V52 spruce LODs.
+- **Build 024:** Natural snow terrain and a walkable bakery interior.
+- **Build 025:** Quest Browser flat-play controls and immersive WebXR support; Build 024 environment content preserved.
