@@ -70,7 +70,7 @@ jobs:
           for(const marker of required) if(!main.includes(marker)) throw new Error('Missing environment feature: '+marker);
           if(main.includes("addBoxCollider(bx-4.5,bx+4.5,bz-3.5,bz+3.5,'cabin')")) throw new Error('Old solid-cabin collider is still present');
           const start=main.indexOf('  const terrainSmooth=');
-          const end=main.indexOf('  // Higher mesh density',start);
+          const end=main.indexOf('  const terrain=planeGrid(',start);
           if(start<0||end<0) throw new Error('Could not isolate terrain heightfield for sampling');
           const context={clamp01:v=>Math.max(0,Math.min(1,v)),planeGrid:()=>({}),add:()=>{}};
           vm.createContext(context);
