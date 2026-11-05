@@ -6,7 +6,7 @@ This roadmap records the agreed order of work and the quality bar for the world.
 
 The next major playable update is focused on making the environment itself feel complete. Forest LOD polishing is deliberately deferred until these two foundational areas are ready.
 
-**Current playtest:** Build 024 — Natural Snow Terrain & Walkable Bakery. The automated build and deployment succeeded. First-person visual review, walking the drifts and steps, bakery entry/exit and furniture collision, and target-PC FPS remain to be checked before this milestone is accepted as finished.
+**Current playtest:** Build 025 — Quest Browser & Immersive WebXR, carrying forward Build 024's natural snow terrain and walkable bakery. The build and Pages deployment succeeded. Quest 3 WebXR permission, controller mapping, headset frame rate, terrain walking, and bakery entry/exit still need hands-on headset testing.
 
 ### 1. Natural snow terrain
 
