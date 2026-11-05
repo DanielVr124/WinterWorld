@@ -6,6 +6,8 @@ This roadmap records the agreed order of work and the quality bar for the world.
 
 The next major playable update is focused on making the environment itself feel complete. Forest LOD polishing is deliberately deferred until these two foundational areas are ready.
 
+**Current playtest:** Build 024 — Natural Snow Terrain & Walkable Bakery. The automated build and deployment succeeded. First-person visual review, walking the drifts and steps, bakery entry/exit and furniture collision, and target-PC FPS remain to be checked before this milestone is accepted as finished.
+
 ### 1. Natural snow terrain
 
 **Current state:** A lightly undulating snowfield sits on a regular grid, with a curving compacted path and raised snow shoulders. This is only a placeholder-level terrain pass.
