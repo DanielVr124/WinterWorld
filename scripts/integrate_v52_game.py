@@ -141,7 +141,7 @@ distance_batcher = """  let sceneBatches = [];
       let mesh=instance.mesh;
       if(instance.lodMeshes){
         const distance=Math.hypot(camera.x-instance.lodPos[0],camera.z-instance.lodPos[1]);
-        mesh=(instance.lodForceFar||instance.lodScale<.55||distance>=68)
+        mesh=(instance.lodForceFar||instance.lodScale<.55||distance>=28)
           ?instance.lodMeshes.far:instance.lodMeshes.medium;
         if(instance._lodMesh!==mesh){instance._lodMesh=mesh;lodChanged=true;}
       }
