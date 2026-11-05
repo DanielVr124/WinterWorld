@@ -9,6 +9,8 @@ import bmesh
 import bpy
 import numpy as np
 
+# Build 023: fuller, spatially balanced medium/far foliage; metadata matches the 28m runtime threshold.
+
 
 def env_required(key):
     value = os.environ.get(key)
@@ -398,12 +400,12 @@ combined_stats = {
     "forest_low_lod": forest_low_stats,
     "placement": {
         "hero": {"x": 10.0, "z": -4.0, "scale": 1.0},
-        "forest": "Distance-selected V52 LODs: one dedicated showcase tree uses the full hero mesh; other mature trees use the medium mesh to 68m and the compact far mesh beyond 68m; small trees use the compact far mesh.",
+        "forest": "Distance-selected V52 LODs: one dedicated showcase tree uses the full hero mesh; other mature trees use the medium mesh inside 28m and the compact far mesh at or beyond 28m; small and distant ridgeline trees use the compact far mesh.",
     },
     "integration": (
-        "Every conifer uses the same final V52 spruce source. Trees near the player use "
-        "the full hero mesh, mid-distance trees use the fuller medium LOD, and far/small "
-        "trees use the low LOD."
+        "Every conifer uses the same final V52 spruce source. Only the dedicated showcase tree uses "
+        "the full hero mesh; other mature trees use the fuller medium LOD inside 28m and "
+        "the far LOD at or beyond 28m. Small and distant ridgeline trees also use the far LOD."
     ),
 }
 with open(output_stats, "w", encoding="utf-8") as handle:
