@@ -1,0 +1,71 @@
+name: Publish Winter World Development Build 023 Release
+
+on:
+  workflow_run:
+    workflows:
+      - Build Winter World 023 with fuller snowy V52 forest LODs
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the successful Build 023 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WinterWorld-Build023-V52-FullerSnowyFoliage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Prepare release assets and verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find_one() {
+            local name="$1"
+            local found
+            found="$(find artifacts -type f -name "$name" -print -quit)"
+            if [[ -z "$found" || ! -s "$found" ]]; then
+              echo "::error::Required Build 023 release asset is missing: $name"
+              exit 1
+            fi
+            cp "$found" "release-assets/$name"
+          }
+          find_one "WinterWorld_Playtest_Build023_V52_FullerSnowyFoliage.zip"
+          find_one "hero_spruce_v52_stats.json"
+          find_one "BUILD_023_CHANGELOG.md"
+          find_one "BUILD_023_TEST_REPORT.md"
+          find_one "BUILD_023_TEST_REPORT.json"
+          find_one "V52_Build023_Hero_Medium_Far_LODs.png"
+          find_one "V52_Cycles_FullTree_ZUp_Framed_40mm.png"
+          find_one "V52_Cycles_Bough_SnowContact_Closeup.png"
+          unzip -tq release-assets/WinterWorld_Playtest_Build023_V52_FullerSnowyFoliage.zip
+          ls -lh release-assets/
+
+      - name: Publish the numbered GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TARGET: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="winter-world-build-023-v52-fuller-snowy-foliage"
+          TITLE="Winter World Development Build 023 — Fuller Snowy V52 Forest"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --title "$TITLE" \
+              --notes-file release-assets/BUILD_023_CHANGELOG.md \
+              --target "$TARGET"
+          fi
