@@ -154,7 +154,7 @@ jobs:
           PY
           cd ../..
           cp work/WinterWorld_Prototype/BUILD_025_CHANGELOG.md BUILD_025_CHANGELOG.md
-          zip -qr -9 WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip work/WinterWorld_Prototype
+          cd work && zip -qr -9 ../WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip WinterWorld_Prototype && cd ..
           unzip -tq WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip
           ls -lh WinterWorld_Playtest_Build025_QuestBrowser_WebXR.zip BUILD_025_CHANGELOG.md BUILD_025_TEST_REPORT.md BUILD_025_TEST_REPORT.json
 
