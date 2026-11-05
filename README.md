@@ -5,6 +5,7 @@ A public, browser-playable WebGL2 first-person winter-world prototype.
 **Current build:** Development Build 022 — Fuller V52 Spruce Boughs  
 **Live playtest:** https://danielvr124.github.io/WinterWorld/  
 **Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-022-v52-fuller-boughs
+**Project roadmap:** [ROADMAP.md](ROADMAP.md)
 
 ## Build 022 — fuller V52 forest LODs
 
