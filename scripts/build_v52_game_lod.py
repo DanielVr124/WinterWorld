@@ -32,27 +32,27 @@ COMPONENT_RATIOS = {
 }
 FOREST_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.25,
+    "Spruce_Primary_Secondary_Boughs": 0.35,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 9.0,
-    "Spruce_Individual_Needles": 9.0,
+    "Spruce_Settled_Snow_Patches": 20.0,
+    "Spruce_Individual_Needles": 20.0,
 }
 FOREST_LOW_COMPONENT_RATIOS = {
     "Spruce_Trunk_Bark": 0.85,
-    "Spruce_Primary_Secondary_Boughs": 0.10,
+    "Spruce_Primary_Secondary_Boughs": 0.20,
     "Spruce_Settled_Snow_Patches": 0.0045,
     "Spruce_Individual_Needles": 0.03,
 }
 FOREST_LOW_ISLAND_KEEP_PERCENT = {
-    "Spruce_Settled_Snow_Patches": 3.5,
-    "Spruce_Individual_Needles": 3.5,
+    "Spruce_Settled_Snow_Patches": 8.0,
+    "Spruce_Individual_Needles": 8.0,
 }
 
 
-def keep_connected_island_sample(obj, keep_percent, seed):
+def keep_connected_island_sample(obj, keep_percent, seed, prefer_large=False):
     """Keep whole snow/needle islands with coverage spread over the tree crown."""
     mesh = obj.data
     bm = bmesh.new()
@@ -109,10 +109,11 @@ def keep_connected_island_sample(obj, keep_percent, seed):
         key = (band, sector)
         buckets.setdefault(key, []).append((len(component), rng.random(), component))
 
-    # Prefer small individual needle/snow islands. Round-robin selection spreads
-    # the limited triangle budget throughout the complete tree crown.
+    # Preserve larger connected snow deposits so branch mantles survive the LOD.
+    # For individual needles, prefer smaller islands to keep a fine, evenly
+    # distributed needle texture. Round-robin keeps coverage around the crown.
     for records in buckets.values():
-        records.sort(key=lambda item: (item[0], item[1]))
+        records.sort(key=lambda item: ((-item[0] if prefer_large else item[0]), item[1]))
 
     keys = sorted(buckets)
     cursors = {key: 0 for key in keys}
@@ -169,6 +170,7 @@ def keep_connected_island_sample(obj, keep_percent, seed):
         "source_faces": input_face_count,
         "retained_faces": kept_face_count,
         "target_face_percent": keep_percent,
+        "selection_preference": "largest_islands" if prefer_large else "smallest_islands",
         "actual_face_percent": round((kept_face_count / max(1, input_face_count)) * 100.0, 3),
         "vertical_bands": vertical_bands,
         "azimuth_sectors": azimuth_sectors,
@@ -226,6 +228,7 @@ def write_mesh_lod(label, ratios, output_js, min_triangles, max_triangles):
                 obj,
                 keep_percent,
                 seed=sum(ord(char) for char in name),
+                prefer_large=(name == "Spruce_Settled_Snow_Patches"),
             )
 
         mesh = obj.data
@@ -376,15 +379,15 @@ forest_stats = write_mesh_lod(
     "Forest",
     FOREST_COMPONENT_RATIOS,
     output_forest_js,
-    min_triangles=105_000,
-    max_triangles=115_000,
+    min_triangles=195_000,
+    max_triangles=225_000,
 )
 forest_low_stats = write_mesh_lod(
     "ForestLow",
     FOREST_LOW_COMPONENT_RATIOS,
     output_forest_low_js,
-    min_triangles=40_000,
-    max_triangles=45_000,
+    min_triangles=85_000,
+    max_triangles=100_000,
 )
 
 combined_stats = {
