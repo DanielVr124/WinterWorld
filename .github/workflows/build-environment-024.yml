@@ -142,7 +142,7 @@ jobs:
           Path('BUILD_024_TEST_REPORT.md').write_text('\n'.join(lines),encoding='utf-8')
           PY
           cp work/WinterWorld_Prototype/BUILD_024_CHANGELOG.md BUILD_024_CHANGELOG.md
-          zip -qr -9 WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip work/WinterWorld_Prototype
+          cd work && zip -qr -9 ../WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip WinterWorld_Prototype && cd ..
           unzip -tq WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip
           ls -lh WinterWorld_Playtest_Build024_NaturalSnow_Bakery.zip BUILD_024_CHANGELOG.md BUILD_024_TEST_REPORT.md BUILD_024_TEST_REPORT.json BUILD_024_TERRAIN_METRICS.json
 
