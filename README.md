@@ -2,32 +2,33 @@
 
 A public, browser-playable WebGL2 first-person winter-world prototype.
 
-**Current build:** Development Build 022 — Fuller V52 Spruce Boughs  
+**Current build:** Development Build 024 — Natural Snow Terrain & Walkable Bakery  
 **Live playtest:** https://danielvr124.github.io/WinterWorld/  
-**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-022-v52-fuller-boughs
+**Latest release:** https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-024-natural-snow-bakery  
 **Project roadmap:** [ROADMAP.md](ROADMAP.md)
 
-## Build 022 — fuller V52 forest LODs
+## Build 024 — Natural Snow Terrain & Walkable Bakery
 
-Build 020 solved the severe performance problem, but its medium and far tree variants lost too much of the source tree's foliage and branch structure. Build 021 distributed snow and needle islands across the crown; Build 022 also restores substantially more of the authored branch geometry.
+This milestone moves the environment ahead of further forest LOD polishing, as requested.
 
-- **Showcase:** 834,798 triangles.
-- **Ordinary medium trees:** 108,394 triangles each, with 25% of the source bough component retained; used within 68m.
-- **Far trees:** 43,100 triangles each, with 10% of the source bough component retained; used beyond 68m and for small understory/ridgeline trees.
-- Snow and needle islands are sampled across eight vertical bands and twelve azimuth sectors, rather than randomly across the entire mesh.
-- The full-detail mesh remains restricted to the single showcase tree. Ordinary trees continue to use distance-based LODs.
-- GPU instance buffers rebuild only when a tree crosses an LOD boundary, not during ordinary movement.
+- Replaces the simple repeating ground ripples with a deterministic layered snow heightfield, broad rolling forms, and wind-built drifts.
+- Uses one shared terrain height function for the visible snowfield, props, path, and first-person ground height.
+- Blends a level foundation under the bakery and bends the path approach toward its entrance.
+- Replaces the solid cabin blocker with separate wall collisions and an open doorway.
+- Adds a walkable timber floor, service counter and pastry display, oven, ingredient shelves, prep table, ceiling beams, warm interior fixtures, and room-aware collisions.
+- Keeps the existing V52 forest meshes and performance-oriented LODs unchanged from Build 022.
 
-Based on the existing starting-view forest placement counts (74 medium, 61 far, and one showcase tree), the estimated workload is about **11.5 million tree triangles per frame**, compared with about **67.3 million** in the laggy Build 019 configuration (roughly **5.9× fewer**). This is a geometry estimate, not a measured FPS result. Build 022 passed the automated mesh, coverage, orientation, LOD wiring, JavaScript, and ZIP-integrity checks; actual in-browser appearance and target-PC FPS still require hands-on review.
+**Automated checks:** JavaScript syntax, sampled terrain height/slope bounds, level bakery foundation, doorway and wall-collision markers, stair/floor height alignment, and ZIP integrity passed in CI.
 
-## Build downloads and reports
+**Still needs hands-on review:** the actual first-person visual quality of the snow, walking the terrain and entrance steps, entering/exiting the bakery and checking furniture collisions, and target-PC FPS. Passing automated checks does not establish that those visual and movement checks are complete.
 
-The [Build 022 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-022-v52-fuller-boughs) includes:
-- Playable Build 022 ZIP.
-- Automated test report (Markdown).
-- Machine-readable QA results (JSON).
-- Blender comparison render of the actual hero, medium, and far mesh buffers.
-- V52 source renders, geometry stats, and changelog.
+## Downloads and reports
+
+The [Build 024 GitHub Release](https://github.com/DanielVr124/WinterWorld/releases/tag/winter-world-build-024-natural-snow-bakery) includes:
+- Playable Build 024 ZIP.
+- Human-readable automated test report.
+- Machine-readable QA results and terrain metrics.
+- Build changelog.
 
 ## Run locally
 
@@ -44,13 +45,11 @@ The [Build 022 GitHub Release](https://github.com/DanielVr124/WinterWorld/releas
 - `Esc`: release the mouse / close settings
 - Click the scene: capture the mouse
 - `E`: development note
-- `F3`: performance, player, submitted-triangle, and live V52 LOD diagnostics
+- `F3`: performance and V52 LOD diagnostics
 
 ## Build history
 
-- **Build 016:** Corrected V52 orientation, but repeated-tree meshes were too aggressively reduced.
-- **Build 017–018:** Tried connected-island sampling; repeated trees remained too sparse.
-- **Build 019:** Added distance-based detail, but left ordinary trees far too expensive.
-- **Build 020:** Keeps the full hero mesh on the showcase tree, reduces ordinary tree meshes to practical budgets, and removes unnecessary GPU-buffer uploads while walking.
-- **Build 021:** Spreads retained snow and needle islands across the tree crown.
-- **Build 022:** Restores more authored bough structure while keeping ordinary trees on the optimized medium/far LODs.
+- **Build 020:** Reduced the forest's severe triangle workload and avoided unnecessary GPU-buffer uploads while walking.
+- **Build 021–022:** Improved the coverage and authored branch structure of medium/far V52 spruce LODs.
+- **Build 023:** Experimental forest direction; deferred from public deployment so terrain and the bakery could take priority.
+- **Build 024:** Natural snow terrain, bakery doorway/interior, and room-aware walking/collision.
