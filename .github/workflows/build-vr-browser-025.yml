@@ -92,7 +92,7 @@ jobs:
             "gl.makeXRCompatible()","new XRWebGLLayer(session,gl",
             "requestReferenceSpace('local-floor')","session.requestAnimationFrame(render)",
             "xrSession.requestAnimationFrame(render)","xrSession.inputSources",
-            "gamepad.axes","handedness==='left'","handedness==='right'",
+            "gp.axes","handedness==='left'","handedness==='right'",
             "touchMove.x","touchMove.y","pointerdown","pointermove",
             "KeyW","KeyA","KeyS","KeyD","terrainNaturalHeight",
             "bakery service counter","insideBakery"
